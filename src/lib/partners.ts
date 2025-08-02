@@ -253,7 +253,8 @@ export async function getSharedExpenses(): Promise<{ expenses: SharedExpense[] |
         category: expense.category,
         is_shared: expense.is_shared,
         created_by_name: profile?.full_name || 'Usuário',
-        created_by_email: ''
+        created_by_email: profile?.email || ''
+        main
       };
     });
 
@@ -329,7 +330,8 @@ export async function getPartnerIndividualExpenses(): Promise<{ expenses: Shared
         category: expense.category,
         is_shared: expense.is_shared,
         created_by_name: profile?.full_name || 'Usuário',
-        created_by_email: ''
+        created_by_email: profile?.email || ''
+        main
       };
     });
 
