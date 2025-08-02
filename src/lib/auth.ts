@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { User, AuthError } from '@supabase/supabase-js'
 import { logger } from './logger'
+import { useState, useEffect } from 'react'
 
 export interface Profile {
   id: string
@@ -207,4 +208,39 @@ export async function updateProfile(userId: string, updates: Partial<Profile>) {
 export async function isAuthenticated() {
   const { user } = await getCurrentUser()
   return !!user
+}
+
+// Hook para usar autenticação
+export function useAuth() {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Obter usuário inicial
+    getCurrentUser().then(({ user }) => {
+      setUser(user)
+      setLoading(false)
+    })
+
+    // Escutar mudanças de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setUser(session?.user ?? null)
+        setLoading(false)
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const signOutUser = async () => {
+    await signOut()
+    setUser(null)
+  }
+
+  return {
+    user,
+    loading,
+    signOut: signOutUser
+  }
 } 

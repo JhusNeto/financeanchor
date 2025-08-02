@@ -1,53 +1,99 @@
-<html>
-  <head>
-    <link rel="icon" type="image/png" sizes="196x196" href="favicon-196.png">
-    <link rel="apple-touch-icon" href="apple-icon-180.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-  </head>
-  <body>{
-    "name": "FinanceAnchor",
-    "short_name": "Finance",
-    "description": "Copiloto financeiro para casais",
-    "lang": "pt-BR",
-    "start_url": "/dashboard",
-    "display": "standalone",
-    "background_color": "#ffffff",
-    "theme_color": "#003366",
-    "orientation": "portrait",
-    "scope": "/",
-    "icons": [
+{
+  "name": "FinanceAnchor - Copiloto Financeiro",
+  "short_name": "FinanceAnchor",
+  "description": "Copiloto financeiro para casais - Controle de gastos, receitas e metas financeiras",
+  "lang": "pt-BR",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#003366",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "prefer_related_applications": false,
+  "categories": ["finance", "productivity", "lifestyle"],
+  "icons": [
     {
-    "src": "/icon-192.png",
-    "sizes": "192x192",
-    "type": "image/png",
-    "purpose": "any maskable"
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-    "src": "/icon-512.png",
-    "sizes": "512x512",
-    "type": "image/png",
-    "purpose": "any maskable"
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-    "src": "/apple-touch-icon.png",
-    "sizes": "180x180",
-    "type": "image/png"
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
     }
-    ],
-    "categories": ["finance", "productivity"],
-    "screenshots": [
+  ],
+  "screenshots": [
     {
-    "src": "/screenshot-wide.png",
-    "sizes": "1280x720",
-    "type": "image/png",
-    "form_factor": "wide"
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard do FinanceAnchor em desktop"
     },
     {
-    "src": "/screenshot-narrow.png",
-    "sizes": "750x1334",
-    "type": "image/png",
-    "form_factor": "narrow"
+      "src": "/screenshot-narrow.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Dashboard do FinanceAnchor em mobile"
     }
-    ]
-    } </body>
-</html>
+  ],
+  "shortcuts": [
+    {
+      "name": "Nova Despesa",
+      "short_name": "Despesa",
+      "description": "Adicionar nova despesa",
+      "url": "/expenses/new",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Nova Meta",
+      "short_name": "Meta",
+      "description": "Criar nova meta financeira",
+      "url": "/goal/new",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Orçamento",
+      "short_name": "Orçamento",
+      "description": "Visualizar orçamento",
+      "url": "/budget",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+financeanchor",
+      "url": "/dashboard?source=%s"
+    }
+  ]
+}

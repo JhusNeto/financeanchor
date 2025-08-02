@@ -9,6 +9,10 @@ import { getGoalSummary } from '@/lib/goals';
 import { getTodayInsight } from '@/lib/insights';
 import { getPartnerData, getSharedExpenses, getPartnerIndividualExpenses, PartnerData, SharedExpense } from '@/lib/partners';
 import { cache } from '@/lib/cache';
+import { checkAchievements, getRecentAchievements } from '@/lib/achievements';
+import { Achievement } from '@/types/achievement';
+import AchievementsSection from '@/components/AchievementsSection';
+import AchievementNotification, { useAchievementNotifications } from '@/components/AchievementNotification';
 
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null);
@@ -25,7 +29,11 @@ export default function DashboardPage() {
   const [partnerData, setPartnerData] = useState<PartnerData | null>(null);
   const [sharedExpenses, setSharedExpenses] = useState<SharedExpense[]>([]);
   const [partnerExpenses, setPartnerExpenses] = useState<SharedExpense[]>([]);
+  const [recentAchievements, setRecentAchievements] = useState<Achievement[]>([]);
   const router = useRouter();
+  
+  // Hook para gerenciar notificações de conquistas
+  const { notifications, addNotification, removeNotification } = useAchievementNotifications();
 
   // Mocked data for Financial Pulse
   const mockData = useMemo(() => ({
@@ -287,6 +295,51 @@ export default function DashboardPage() {
     }
   }, [user?.id, loadDataWithCache]);
 
+  // Função para carregar conquistas
+  const loadAchievements = useCallback(async () => {
+    try {
+      const achievements = await getRecentAchievements();
+      setRecentAchievements(achievements);
+    } catch (error) {
+      console.error('Erro ao carregar conquistas:', error);
+    }
+  }, []);
+
+  // Função para verificar conquistas
+  const checkUserAchievements = useCallback(async () => {
+    try {
+      // Dados para verificar conquistas - usando tipos mais simples
+      const achievementData: any = {
+        expenses: [], // TODO: Carregar despesas do usuário
+        goals: goalSummary ? [goalSummary] : [],
+        debts: debtSummary ? [{ 
+          remaining_amount: debtSummary.total_debt 
+        }] : [],
+        budgets: budgetSummary ? [{ 
+          total_budget: budgetSummary.total_budget 
+        }] : [],
+        weeklySpending: mockData.gastoSemana,
+        weeklyBudget: mockData.orcamentoSemana,
+        totalSaved: 0, // TODO: Calcular baseado nos dados
+        consecutiveDays: 0, // TODO: Calcular baseado nos dados
+        newDebtsThisMonth: 0, // TODO: Calcular baseado nos dados
+        monthsSaving: 0 // TODO: Calcular baseado nos dados
+      };
+
+      const newAchievements = await checkAchievements(achievementData);
+      
+      // Adicionar notificações para novas conquistas
+      for (const achievementType of newAchievements) {
+        const achievement = recentAchievements.find(a => a.type === achievementType);
+        if (achievement) {
+          addNotification(achievement);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar conquistas:', error);
+    }
+  }, [goalSummary, debtSummary, budgetSummary, mockData, recentAchievements, addNotification]);
+
   // FASE 2: Carregar dados completos em background com cache
   const loadCompleteData = useCallback(async () => {
     try {
@@ -298,11 +351,15 @@ export default function DashboardPage() {
         loadDebtData(),
         loadGoalData(),
         loadInsightData(),
-        loadPartnerData()
+        loadPartnerData(),
+        loadAchievements()
       ];
 
       // Aguardar todas as promises em paralelo
       await Promise.allSettled(promises);
+      
+      // Verificar conquistas após carregar dados
+      await checkUserAchievements();
       
       setLoadingComplete(false);
       
@@ -310,7 +367,7 @@ export default function DashboardPage() {
       console.error('Erro ao carregar dados completos:', error);
       setLoadingComplete(false);
     }
-  }, [loadBudgetData, loadDebtData, loadGoalData, loadInsightData, loadPartnerData]);
+  }, [loadBudgetData, loadDebtData, loadGoalData, loadInsightData, loadPartnerData, loadAchievements, checkUserAchievements]);
 
   const formatarData = useCallback(() => {
     const hoje = new Date();
@@ -746,6 +803,9 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* Seção de Conquistas */}
+          <AchievementsSection />
+
           {/* Seção do Parceiro */}
           {partnerData?.has_partner ? (
             <div className="bg-gradient-to-r from-pink-500 to-purple-600 rounded-2xl shadow-xl p-6 text-white mb-6">
@@ -880,6 +940,15 @@ export default function DashboardPage() {
           )}
         </div>
       </main>
+
+      {/* Notificações de Conquistas */}
+      {notifications.map((achievement) => (
+        <AchievementNotification
+          key={achievement.id}
+          achievement={achievement}
+          onClose={() => removeNotification(achievement.id)}
+        />
+      ))}
     </div>
   );
 } 
