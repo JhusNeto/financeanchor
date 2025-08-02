@@ -124,8 +124,10 @@ export default function EditDebtPage() {
   };
 
   const calculateMonths = () => {
-    if (formData.monthly_payment <= 0 || formData.total_amount <= 0) return 0;
-    return Math.ceil(formData.total_amount / formData.monthly_payment);
+    const monthly = formData.monthly_payment ?? 0;
+    const total = formData.total_amount ?? 0;
+    if (monthly <= 0 || total <= 0) return 0;
+    return Math.ceil(total / monthly);
   };
 
   if (!mounted) {
@@ -310,7 +312,7 @@ export default function EditDebtPage() {
             </div>
 
             {/* Resumo calculado */}
-            {formData.total_amount > 0 && formData.monthly_payment > 0 && (
+            {(formData.total_amount ?? 0) > 0 && (formData.monthly_payment ?? 0) > 0 && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h3 className="text-sm font-medium text-blue-800 mb-2">Resumo da Dívida</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -320,11 +322,11 @@ export default function EditDebtPage() {
                   </div>
                   <div>
                     <p className="text-blue-600">Valor total:</p>
-                    <p className="font-semibold text-blue-800">{formatCurrency(formData.total_amount)}</p>
+                    <p className="font-semibold text-blue-800">{formatCurrency(formData.total_amount ?? 0)}</p>
                   </div>
                   <div>
                     <p className="text-blue-600">Parcela mensal:</p>
-                    <p className="font-semibold text-blue-800">{formatCurrency(formData.monthly_payment)}</p>
+                    <p className="font-semibold text-blue-800">{formatCurrency(formData.monthly_payment ?? 0)}</p>
                   </div>
                   <div>
                     <p className="text-blue-600">Vencimento:</p>
