@@ -287,13 +287,15 @@ export async function getExpenseStats(): Promise<{ stats: any; error: any }> {
     }
 
     // Total do mês atual
-    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const now = new Date();
+    const currentMonth = now.toISOString().slice(0, 7); // YYYY-MM
+    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const { data: monthlyTotal, error: monthlyError } = await supabase
       .from('expenses')
       .select('amount')
       .eq('user_id', user.id)
       .gte('date', `${currentMonth}-01`)
-      .lte('date', `${currentMonth}-31`);
+      .lte('date', `${currentMonth}-${lastDayOfMonth.toString().padStart(2, '0')}`);
 
     if (monthlyError) {
       return { stats: null, error: monthlyError };
