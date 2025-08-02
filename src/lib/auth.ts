@@ -139,7 +139,7 @@ export async function getProfile(userId: string) {
 
     if (error) {
       logger.error('Erro ao buscar perfil', error, 'AUTH');
-      return { profile: null, error: error as AuthError };
+      return { profile: null, error: error as unknown as AuthError };
     }
 
     // Se o perfil não existe, criar um perfil básico

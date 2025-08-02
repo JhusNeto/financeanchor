@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getCurrentUser, getProfile, signOut, Profile } from '@/lib/auth';
@@ -8,12 +8,13 @@ import { getDebtsSummary } from '@/lib/debts';
 import { getGoalSummary } from '@/lib/goals';
 import { getTodayInsight } from '@/lib/insights';
 import { getPartnerData, getSharedExpenses, getPartnerIndividualExpenses, PartnerData, SharedExpense } from '@/lib/partners';
+import { cache } from '@/lib/cache';
 
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-    const [loadingComplete, setLoadingComplete] = useState(false);
+  const [loadingComplete, setLoadingComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dataFormatada, setDataFormatada] = useState('');
   const [mounted, setMounted] = useState(false);
@@ -27,7 +28,7 @@ export default function DashboardPage() {
   const router = useRouter();
 
   // Mocked data for Financial Pulse
-  const mockData = {
+  const mockData = useMemo(() => ({
     saldoDiario: 120.00,
     gastoSemana: 450.00,
     orcamentoSemana: 800.00,
@@ -38,27 +39,29 @@ export default function DashboardPage() {
     },
     totalDividas: 4300.00,
     mesesLiberdade: 8
-  };
+  }), []);
 
-  useEffect(() => {
-    setMounted(true);
+  // Função para carregar dados com cache
+  const loadDataWithCache = useCallback(async (key: string, loader: () => Promise<any>, ttl: number = 5 * 60 * 1000) => {
+    // Verificar cache primeiro
+    const cached = cache.get(key);
+    if (cached) {
+      return cached;
+    }
+
+    // Carregar dados
+    const data = await loader();
     
-    // Adicionar timeout para evitar travamento infinito
-    const timeoutId = setTimeout(() => {
-      if (loading) {
-        setError('Tempo limite excedido. Verifique sua conexão e tente novamente.');
-        setLoading(false);
-      }
-    }, 30000); // 30 segundos
+    // Salvar no cache
+    if (data && !data.error) {
+      cache.set(key, data, ttl);
+    }
 
-    loadBasicData();
-    formatarData();
-
-    return () => clearTimeout(timeoutId);
+    return data;
   }, []);
 
   // FASE 1: Carregar dados básicos (usuário, perfil) - Rápido
-  const loadBasicData = async () => {
+  const loadBasicData = useCallback(async () => {
     try {
       const { user: currentUser, error } = await getCurrentUser();
 
@@ -119,21 +122,131 @@ export default function DashboardPage() {
       // FASE 2: Carregar dados completos em background (sem bloquear UI)
       setTimeout(() => {
         loadCompleteData();
-      }, 500); // Delay menor para melhor UX
+      }, 100); // Delay menor para melhor UX
       
     } catch (error) {
       setError(`Erro geral: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
       setLoading(false);
       router.push('/auth/login');
     }
-  };
+  }, [router]);
 
-  // FASE 2: Carregar dados completos em background
-  const loadCompleteData = async () => {
+  // Funções separadas para carregar cada tipo de dado com cache
+  const loadBudgetData = useCallback(async () => {
+    try {
+      const cacheKey = `budget_summary_${user?.id}`;
+      const { budgetSummary: summaryData, error: budgetError } = await loadDataWithCache(
+        cacheKey,
+        () => getBudgetSummary(),
+        2 * 60 * 1000 // 2 minutos de cache
+      );
+      
+      if (!budgetError && summaryData) {
+        setBudgetSummary(summaryData);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar orçamento:', error);
+    }
+  }, [user?.id, loadDataWithCache]);
+
+  const loadDebtData = useCallback(async () => {
+    try {
+      const cacheKey = `debt_summary_${user?.id}`;
+      const { debtSummary: debtSummaryData, error: debtError } = await loadDataWithCache(
+        cacheKey,
+        () => getDebtsSummary(),
+        2 * 60 * 1000 // 2 minutos de cache
+      );
+      
+      if (!debtError && debtSummaryData) {
+        setDebtSummary(debtSummaryData);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dívidas:', error);
+    }
+  }, [user?.id, loadDataWithCache]);
+
+  const loadGoalData = useCallback(async () => {
+    try {
+      const cacheKey = `goal_summary_${user?.id}`;
+      const { goalSummary: goalSummaryData, error: goalError } = await loadDataWithCache(
+        cacheKey,
+        () => getGoalSummary(),
+        5 * 60 * 1000 // 5 minutos de cache
+      );
+      
+      if (!goalError && goalSummaryData) {
+        setGoalSummary(goalSummaryData);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar metas:', error);
+    }
+  }, [user?.id, loadDataWithCache]);
+
+  const loadInsightData = useCallback(async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const cacheKey = `today_insight_${user?.id}_${today}`;
+      const { insight: insightData, error: insightError } = await loadDataWithCache(
+        cacheKey,
+        () => getTodayInsight(),
+        60 * 60 * 1000 // 1 hora de cache (insight do dia)
+      );
+      
+      if (!insightError && insightData) {
+        setTodayInsight(insightData);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar insight:', error);
+    }
+  }, [user?.id, loadDataWithCache]);
+
+  const loadPartnerData = useCallback(async () => {
+    try {
+      const cacheKey = `partner_data_${user?.id}`;
+      const { partner: partnerDataResult, error: partnerError } = await loadDataWithCache(
+        cacheKey,
+        () => getPartnerData(),
+        10 * 60 * 1000 // 10 minutos de cache
+      );
+      
+      if (!partnerError && partnerDataResult) {
+        setPartnerData(partnerDataResult);
+        
+        // Carregar despesas compartilhadas se tiver parceiro
+        if (partnerDataResult.has_partner) {
+          const { expenses: sharedExpensesData, error: sharedError } = await loadDataWithCache(
+            `shared_expenses_${user?.id}`,
+            () => getSharedExpenses(),
+            2 * 60 * 1000 // 2 minutos de cache
+          );
+          
+          if (!sharedError && sharedExpensesData) {
+            setSharedExpenses(sharedExpensesData);
+          }
+
+          const { expenses: partnerExpensesData, error: partnerExpError } = await loadDataWithCache(
+            `partner_expenses_${user?.id}`,
+            () => getPartnerIndividualExpenses(),
+            2 * 60 * 1000 // 2 minutos de cache
+          );
+          
+          if (!partnerExpError && partnerExpensesData) {
+            setPartnerExpenses(partnerExpensesData);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados do parceiro:', error);
+    }
+  }, [user?.id, loadDataWithCache]);
+
+  // FASE 2: Carregar dados completos em background com cache
+  const loadCompleteData = useCallback(async () => {
     try {
       setLoadingComplete(true);
       
-      // Carregar dados em paralelo para melhor performance
+      // Carregar dados em paralelo com cache
       const promises = [
         loadBudgetData(),
         loadDebtData(),
@@ -151,78 +264,9 @@ export default function DashboardPage() {
       console.error('Erro ao carregar dados completos:', error);
       setLoadingComplete(false);
     }
-  };
+  }, [loadBudgetData, loadDebtData, loadGoalData, loadInsightData, loadPartnerData]);
 
-  // Funções separadas para carregar cada tipo de dado
-  const loadBudgetData = async () => {
-    try {
-      const { budgetSummary: summaryData, error: budgetError } = await getBudgetSummary();
-      if (!budgetError && summaryData) {
-        setBudgetSummary(summaryData);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar orçamento:', error);
-    }
-  };
-
-  const loadDebtData = async () => {
-    try {
-      const { debtSummary: debtSummaryData, error: debtError } = await getDebtsSummary();
-      if (!debtError && debtSummaryData) {
-        setDebtSummary(debtSummaryData);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar dívidas:', error);
-    }
-  };
-
-  const loadGoalData = async () => {
-    try {
-      const { goalSummary: goalSummaryData, error: goalError } = await getGoalSummary();
-      if (!goalError && goalSummaryData) {
-        setGoalSummary(goalSummaryData);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar metas:', error);
-    }
-  };
-
-  const loadInsightData = async () => {
-    try {
-      const { insight: insightData, error: insightError } = await getTodayInsight();
-      if (!insightError && insightData) {
-        setTodayInsight(insightData);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar insight:', error);
-    }
-  };
-
-  const loadPartnerData = async () => {
-    try {
-      const { partner: partnerDataResult, error: partnerError } = await getPartnerData();
-      if (!partnerError && partnerDataResult) {
-        setPartnerData(partnerDataResult);
-        
-        // Carregar despesas compartilhadas se tiver parceiro
-        if (partnerDataResult.has_partner) {
-          const { expenses: sharedExpensesData, error: sharedError } = await getSharedExpenses();
-          if (!sharedError && sharedExpensesData) {
-            setSharedExpenses(sharedExpensesData);
-          }
-
-          const { expenses: partnerExpensesData, error: partnerExpError } = await getPartnerIndividualExpenses();
-          if (!partnerExpError && partnerExpensesData) {
-            setPartnerExpenses(partnerExpensesData);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao carregar dados do parceiro:', error);
-    }
-  };
-
-  const formatarData = () => {
+  const formatarData = useCallback(() => {
     const hoje = new Date();
     const opcoes: Intl.DateTimeFormatOptions = {
       weekday: 'long',
@@ -231,26 +275,47 @@ export default function DashboardPage() {
     };
     const dataFormatada = hoje.toLocaleDateString('pt-BR', opcoes);
     setDataFormatada(dataFormatada);
-  };
+  }, []);
 
-  const calcularPorcentagemGasto = () => {
+  const calcularPorcentagemGasto = useCallback(() => {
     return (mockData.gastoSemana / mockData.orcamentoSemana) * 100;
-  };
+  }, [mockData]);
 
-  const getCorBarra = (porcentagem: number) => {
+  const getCorBarra = useCallback((porcentagem: number) => {
     if (porcentagem <= 50) return 'bg-green-500';
     if (porcentagem <= 80) return 'bg-yellow-500';
     return 'bg-red-500';
-  };
+  }, []);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       await signOut();
+      // Limpar cache ao fazer logout
+      cache.clear();
       router.push('/auth/login');
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    setMounted(true);
+    
+    // Adicionar timeout para evitar travamento infinito
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        setError('Tempo limite excedido. Verifique sua conexão e tente novamente.');
+        setLoading(false);
+      }
+    }, 30000); // 30 segundos
+
+    loadBasicData();
+    formatarData();
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [loadBasicData, formatarData, loading]);
 
   if (!mounted) {
     return null;

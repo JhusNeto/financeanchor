@@ -187,7 +187,7 @@ export default function EditGoalPage() {
   };
 
   const calculateDailySavings = () => {
-    if (formData.target_amount <= 0 || calculateMonths() <= 0) return 0;
+    if (!formData.target_amount || formData.target_amount <= 0 || calculateMonths() <= 0) return 0;
     const months = calculateMonths();
     const dailyAmount = (formData.target_amount - (formData.current_amount || 0)) / (months * 30);
     return Math.max(dailyAmount, 0);
@@ -431,7 +431,7 @@ export default function EditGoalPage() {
             </div>
 
             {/* Resumo calculado */}
-            {formData.target_amount > 0 && formData.deadline && (
+            {formData.target_amount && formData.target_amount > 0 && formData.deadline && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h3 className="text-sm font-medium text-blue-800 mb-2">Resumo da Meta</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">

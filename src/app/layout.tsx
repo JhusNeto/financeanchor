@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import LoggerSetup from "@/components/LoggerSetup";
+import PerformanceMonitor from "@/components/PerformanceMonitor";
+import DebugPanel from "@/components/DebugPanel";
 
 export const metadata: Metadata = {
   title: "FinanceAnchor - Finanças Pessoais",
@@ -55,6 +57,8 @@ export default function RootLayout({
       <body className="antialiased" suppressHydrationWarning>
         <LoggerSetup />
         {children}
+        <PerformanceMonitor />
+        <DebugPanel />
       </body>
     </html>
   );

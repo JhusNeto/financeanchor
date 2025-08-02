@@ -1,15 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Habilita o modo estrito do React
+  // Configuração básica e estável
   reactStrictMode: true,
+  
+  // Configurações de desenvolvimento
   typescript: {
-    // Ignora erros de type checking durante o build
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false, // Habilitar type checking
   },
+  
   eslint: {
-    // Evita que warnings do ESLint quebrem o build
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false, // Habilitar ESLint
   },
 };
 

@@ -151,9 +151,9 @@ export default function NewGoalPage() {
   };
 
   const calculateDailySavings = () => {
-    if (formData.target_amount <= 0 || calculateMonths() <= 0) return 0;
+    if (!formData.target_amount || formData.target_amount <= 0 || calculateMonths() <= 0) return 0;
     const months = calculateMonths();
-    const dailyAmount = (formData.target_amount - formData.current_amount) / (months * 30);
+    const dailyAmount = (formData.target_amount - (formData.current_amount || 0)) / (months * 30);
     return Math.max(dailyAmount, 0);
   };
 
@@ -378,7 +378,7 @@ export default function NewGoalPage() {
                   </div>
                   <div>
                     <p className="text-blue-600">Valor atual:</p>
-                    <p className="font-semibold text-blue-800">{formatCurrency(formData.current_amount)}</p>
+                    <p className="font-semibold text-blue-800">{formatCurrency(formData.current_amount || 0)}</p>
                   </div>
                 </div>
               </div>
