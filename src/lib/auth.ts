@@ -99,8 +99,25 @@ export async function signOut() {
 // Função para obter usuário atual
 export async function getCurrentUser() {
   try {
-    const { data: { user }, error } = await supabase.auth.getUser()
-    
+    // Garantir que a sessão esteja carregada antes de buscar o usuário
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
+
+    if (sessionError) {
+      throw sessionError
+    }
+
+    if (!session) {
+      return { user: null, error: null }
+    }
+
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser()
+
     if (error) {
       throw error
     }
