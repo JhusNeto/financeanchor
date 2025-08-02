@@ -7,7 +7,7 @@ import { getBudgetSummary } from '@/lib/budgets';
 import { getDebtsSummary } from '@/lib/debts';
 import { getGoalSummary } from '@/lib/goals';
 import { getTodayInsight } from '@/lib/insights';
-import { getPartnerData, getSharedExpenses, PartnerData, SharedExpense } from '@/lib/partners';
+import { getPartnerData, getSharedExpenses, getPartnerIndividualExpenses, PartnerData, SharedExpense } from '@/lib/partners';
 
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null);
@@ -23,6 +23,7 @@ export default function DashboardPage() {
   const [todayInsight, setTodayInsight] = useState<any>(null);
   const [partnerData, setPartnerData] = useState<PartnerData | null>(null);
   const [sharedExpenses, setSharedExpenses] = useState<SharedExpense[]>([]);
+  const [partnerExpenses, setPartnerExpenses] = useState<SharedExpense[]>([]);
   const router = useRouter();
 
   // Mocked data for Financial Pulse
@@ -207,6 +208,11 @@ export default function DashboardPage() {
           const { expenses: sharedExpensesData, error: sharedError } = await getSharedExpenses();
           if (!sharedError && sharedExpensesData) {
             setSharedExpenses(sharedExpensesData);
+          }
+
+          const { expenses: partnerExpensesData, error: partnerExpError } = await getPartnerIndividualExpenses();
+          if (!partnerExpError && partnerExpensesData) {
+            setPartnerExpenses(partnerExpensesData);
           }
         }
       }
@@ -680,6 +686,33 @@ export default function DashboardPage() {
                   {sharedExpenses.length > 3 && (
                     <p className="text-xs text-pink-100 text-center mt-2">
                       +{sharedExpenses.length - 3} mais despesas compartilhadas
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Despesas do(a) parceiro(a) */}
+              {partnerExpenses.length > 0 && (
+                <div className="bg-white bg-opacity-10 rounded-lg p-4 mb-4">
+                  <h4 className="text-sm font-medium mb-3">Gastos do(a) parceiro(a)</h4>
+                  <div className="space-y-2">
+                    {partnerExpenses.slice(0, 3).map((expense) => (
+                      <div key={expense.id} className="flex items-center justify-between bg-white bg-opacity-10 rounded-lg p-3">
+                        <div>
+                          <p className="text-sm font-medium">{expense.description}</p>
+                          <p className="text-xs text-pink-100">
+                            do(a) parceiro(a) • {new Date(expense.date).toLocaleDateString('pt-BR')}
+                          </p>
+                        </div>
+                        <span className="text-sm font-bold">
+                          R$ {expense.amount.toFixed(2).replace('.', ',')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  {partnerExpenses.length > 3 && (
+                    <p className="text-xs text-pink-100 text-center mt-2">
+                      +{partnerExpenses.length - 3} gastos do(a) parceiro(a)
                     </p>
                   )}
                 </div>

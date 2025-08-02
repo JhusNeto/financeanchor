@@ -256,6 +256,77 @@ export async function getSharedExpenses(): Promise<{ expenses: SharedExpense[] |
   }
 }
 
+// Obter despesas individuais do parceiro
+export async function getPartnerIndividualExpenses(): Promise<{ expenses: SharedExpense[] | null; error: any }> {
+  try {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { expenses: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    // Buscar o parceiro do usuário
+    const { data: userProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('partner_id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error('Erro ao buscar perfil do usuário:', profileError);
+      return { expenses: null, error: profileError };
+    }
+
+    // Se não tiver parceiro vinculado
+    if (!userProfile?.partner_id) {
+      return { expenses: [], error: null };
+    }
+
+    // Buscar despesas individuais do parceiro
+    const { data: expenses, error } = await supabase
+      .from('expenses')
+      .select(`
+        id,
+        user_id,
+        description,
+        amount,
+        date,
+        category,
+        is_shared,
+        profiles!expenses_user_id_fkey (
+          full_name,
+          email
+        )
+      `)
+      .eq('user_id', userProfile.partner_id)
+      .eq('is_shared', false)
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Erro ao buscar despesas do parceiro:', error);
+      return { expenses: null, error };
+    }
+
+    const partnerExpenses: SharedExpense[] = (expenses || []).map(expense => ({
+      id: expense.id,
+      user_id: expense.user_id,
+      description: expense.description,
+      amount: expense.amount,
+      date: expense.date,
+      category: expense.category,
+      is_shared: expense.is_shared,
+      created_by_name: expense.profiles?.full_name || 'Usuário',
+      created_by_email: expense.profiles?.email || ''
+    }));
+
+    return { expenses: partnerExpenses, error: null };
+  } catch (error) {
+    console.error('Erro inesperado ao buscar despesas do parceiro:', error);
+    return { expenses: null, error };
+  }
+}
+
 // Verificar se usuário tem parceiro
 export async function hasPartner(): Promise<{ hasPartner: boolean; error: any }> {
   try {

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { getExpensesByMonth, getWeeklyTotal } from '@/lib/expenses';
 import { getCurrentUser } from '@/lib/auth';
 import { CATEGORY_ICONS, CATEGORY_COLORS, Expense } from '@/types/expense';
-import { getPartnerData, getSharedExpenses, PartnerData, SharedExpense } from '@/lib/partners';
+import { getPartnerData, getSharedExpenses, getPartnerIndividualExpenses, PartnerData, SharedExpense } from '@/lib/partners';
 
 interface ExpenseGroup {
   date: string;
@@ -21,6 +21,7 @@ export default function ExpensesPage() {
   const [mounted, setMounted] = useState(false);
   const [partnerData, setPartnerData] = useState<PartnerData | null>(null);
   const [sharedExpenses, setSharedExpenses] = useState<SharedExpense[]>([]);
+  const [partnerExpenses, setPartnerExpenses] = useState<SharedExpense[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -68,6 +69,9 @@ export default function ExpensesPage() {
       if (partnerDataResult?.has_partner) {
         const { expenses: sharedExpensesData } = await getSharedExpenses();
         setSharedExpenses(sharedExpensesData || []);
+
+        const { expenses: partnerExpensesData } = await getPartnerIndividualExpenses();
+        setPartnerExpenses(partnerExpensesData || []);
       }
 
     } catch (error) {
@@ -270,6 +274,54 @@ export default function ExpensesPage() {
                     <div className="px-6 py-3 text-center">
                       <p className="text-xs text-pink-100">
                         +{sharedExpenses.length - 5} mais despesas compartilhadas
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Despesas do(a) parceiro(a) */}
+            {partnerData?.has_partner && partnerExpenses.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 bg-white">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold text-gray-900">Despesas do(a) parceiro(a)</h3>
+                    <span className="text-sm text-gray-500">
+                      {formatCurrency(partnerExpenses.reduce((sum, exp) => sum + exp.amount, 0))}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="divide-y divide-gray-100">
+                  {partnerExpenses.slice(0, 5).map((expense) => (
+                    <div key={expense.id} className="px-6 py-4 flex items-center justify-between">
+                      <div className="flex items-center space-x-4 flex-1">
+                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-medium text-gray-600">
+                            {expense.created_by_name?.charAt(0) || 'P'}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {expense.description || expense.category}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            do(a) parceiro(a) • {formatDate(expense.date)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-gray-900">
+                          {formatCurrency(expense.amount)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  {partnerExpenses.length > 5 && (
+                    <div className="px-6 py-3 text-center">
+                      <p className="text-xs text-gray-500">
+                        +{partnerExpenses.length - 5} despesas do(a) parceiro(a)
                       </p>
                     </div>
                   )}
