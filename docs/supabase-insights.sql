@@ -65,9 +65,11 @@ DECLARE
     new_insight_id UUID;
 BEGIN
     -- Verificar se já existe insight para hoje
-    IF EXISTS (SELECT 1 FROM daily_insights WHERE user_id = p_user_id AND date = CURRENT_DATE) THEN
+    IF EXISTS (
+        SELECT 1 FROM daily_insights di WHERE di.user_id = p_user_id AND di.date = CURRENT_DATE
+    ) THEN
         RETURN QUERY
-        SELECT 
+        SELECT
             di.id as insight_id,
             di.message,
             di.date
@@ -78,28 +80,28 @@ BEGIN
     END IF;
 
     -- Calcular gastos da semana atual (últimos 7 dias)
-    SELECT COALESCE(SUM(amount), 0) INTO current_week_total
-    FROM expenses 
-    WHERE user_id = p_user_id 
-    AND date >= CURRENT_DATE - INTERVAL '7 days'
-    AND date < CURRENT_DATE;
+    SELECT COALESCE(SUM(e.amount), 0) INTO current_week_total
+    FROM expenses e
+    WHERE e.user_id = p_user_id
+    AND e.date >= CURRENT_DATE - INTERVAL '7 days'
+    AND e.date < CURRENT_DATE;
 
     -- Calcular gastos da semana anterior (7 dias antes)
-    SELECT COALESCE(SUM(amount), 0) INTO previous_week_total
-    FROM expenses 
-    WHERE user_id = p_user_id 
-    AND date >= CURRENT_DATE - INTERVAL '14 days'
-    AND date < CURRENT_DATE - INTERVAL '7 days';
+    SELECT COALESCE(SUM(e.amount), 0) INTO previous_week_total
+    FROM expenses e
+    WHERE e.user_id = p_user_id
+    AND e.date >= CURRENT_DATE - INTERVAL '14 days'
+    AND e.date < CURRENT_DATE - INTERVAL '7 days';
 
     -- Calcular receitas do mês atual (mockado por enquanto)
     current_month_income := 5000.00; -- Valor mockado
 
     -- Calcular despesas do mês atual
-    SELECT COALESCE(SUM(amount), 0) INTO current_month_expenses
-    FROM expenses 
-    WHERE user_id = p_user_id 
-    AND date >= DATE_TRUNC('month', CURRENT_DATE)
-    AND date < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month';
+    SELECT COALESCE(SUM(e.amount), 0) INTO current_month_expenses
+    FROM expenses e
+    WHERE e.user_id = p_user_id
+    AND e.date >= DATE_TRUNC('month', CURRENT_DATE)
+    AND e.date < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month';
 
     -- Verificar meta mais próxima
     SELECT 
@@ -187,8 +189,8 @@ DECLARE
 BEGIN
     -- Primeiro, verificar se já existe insight para hoje
     SELECT id, message, date INTO existing_insight
-    FROM daily_insights 
-    WHERE user_id = p_user_id AND date = CURRENT_DATE
+    FROM daily_insights di
+    WHERE di.user_id = p_user_id AND di.date = CURRENT_DATE
     LIMIT 1;
 
     -- Se já existe, retornar

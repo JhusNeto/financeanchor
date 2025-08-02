@@ -9,7 +9,9 @@ export function useDebounce<T extends (...args: any[]) => any>(
   callback: T,
   delay: number
 ): T {
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  // `useRef` requires an initial value. Initialize with `null` and allow it to
+  // store the timer when one is scheduled.
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   return useCallback(
     ((...args: any[]) => {
@@ -28,7 +30,9 @@ export function useThrottle<T extends (...args: any[]) => any>(
   delay: number
 ): T {
   const lastCall = useRef(0);
-  const lastCallTimer = useRef<NodeJS.Timeout>();
+  // Same as above, initialize the timer reference to `null` so it can be
+  // safely cleared and reassigned.
+  const lastCallTimer = useRef<NodeJS.Timeout | null>(null);
 
   return useCallback(
     ((...args: any[]) => {
@@ -93,26 +97,26 @@ export function usePerformanceMonitor() {
     averageRenderTime: 0,
   });
 
-  useEffect(() => {
-    const startTime = performance.now();
-    
-    return () => {
-      const endTime = performance.now();
-      const renderTime = endTime - startTime;
-      
-      performanceRef.current.renderCount++;
-      performanceRef.current.lastRenderTime = renderTime;
-      
-      // Calcular tempo médio de renderização
-      const { renderCount, averageRenderTime } = performanceRef.current;
-      performanceRef.current.averageRenderTime = 
-        (averageRenderTime * (renderCount - 1) + renderTime) / renderCount;
+  // Registrar o tempo de início de cada renderização
+  const startTimeRef = useRef(0);
+  startTimeRef.current = performance.now();
 
-      // Alertar se o tempo de renderização estiver alto
-      if (renderTime > 100) {
-        console.warn(`Renderização lenta detectada: ${renderTime.toFixed(2)}ms`);
-      }
-    };
+  useEffect(() => {
+    const endTime = performance.now();
+    const renderTime = endTime - startTimeRef.current;
+
+    performanceRef.current.renderCount++;
+    performanceRef.current.lastRenderTime = renderTime;
+
+    // Calcular tempo médio de renderização
+    const { renderCount, averageRenderTime } = performanceRef.current;
+    performanceRef.current.averageRenderTime =
+      (averageRenderTime * (renderCount - 1) + renderTime) / renderCount;
+
+    // Alertar se o tempo de renderização estiver alto (apenas em desenvolvimento)
+    if (process.env.NODE_ENV === 'development' && renderTime > 200) {
+      console.warn(`Renderização lenta detectada: ${renderTime.toFixed(2)}ms`);
+    }
   });
 
   return performanceRef.current;
