@@ -2,8 +2,9 @@
 // FUNÇÕES SUPABASE PARA SISTEMA DE PARCEIROS - FINANCEANCHOR
 // =====================================================
 
-import { supabase } from './supabase'
+import { supabase } from './supabase';
 import { logger } from './logger';
+import { getCurrentUser } from './auth';
 
 export interface PartnerData {
   partner_id: string | null;
@@ -34,8 +35,8 @@ export interface InvitePartnerResponse {
 // Convidar parceiro
 export async function invitePartner(partnerEmail: string): Promise<InvitePartnerResponse> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+    const { user, error: authError } = await getCurrentUser();
+
     if (authError || !user) {
       return { success: false, message: 'Usuário não autenticado' };
     }
@@ -47,13 +48,13 @@ export async function invitePartner(partnerEmail: string): Promise<InvitePartner
       });
 
     if (error) {
-      console.error('Erro ao convidar parceiro:', error);
+      logger.error('Erro ao convidar parceiro', error, 'PARTNERS');
       return { success: false, message: 'Erro ao convidar parceiro' };
     }
 
     return data;
   } catch (error) {
-    console.error('Erro inesperado ao convidar parceiro:', error);
+    logger.error('Erro inesperado ao convidar parceiro', error, 'PARTNERS');
     return { success: false, message: 'Erro inesperado ao convidar parceiro' };
   }
 }
@@ -61,8 +62,8 @@ export async function invitePartner(partnerEmail: string): Promise<InvitePartner
 // Remover parceiro
 export async function removePartner(): Promise<InvitePartnerResponse> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+    const { user, error: authError } = await getCurrentUser();
+
     if (authError || !user) {
       return { success: false, message: 'Usuário não autenticado' };
     }
@@ -73,13 +74,13 @@ export async function removePartner(): Promise<InvitePartnerResponse> {
       });
 
     if (error) {
-      console.error('Erro ao remover parceiro:', error);
+      logger.error('Erro ao remover parceiro', error, 'PARTNERS');
       return { success: false, message: 'Erro ao remover parceiro' };
     }
 
     return data;
   } catch (error) {
-    console.error('Erro inesperado ao remover parceiro:', error);
+    logger.error('Erro inesperado ao remover parceiro', error, 'PARTNERS');
     return { success: false, message: 'Erro inesperado ao remover parceiro' };
   }
 }
@@ -87,8 +88,8 @@ export async function removePartner(): Promise<InvitePartnerResponse> {
 // Obter dados do parceiro
 export async function getPartnerData(): Promise<{ partner: PartnerData | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+    const { user, error: authError } = await getCurrentUser();
+
     if (authError || !user) {
       return { partner: null, error: { message: 'Usuário não autenticado' } };
     }
@@ -182,8 +183,8 @@ export async function getPartnerData(): Promise<{ partner: PartnerData | null; e
 // Obter despesas compartilhadas
 export async function getSharedExpenses(): Promise<{ expenses: SharedExpense[] | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+    const { user, error: authError } = await getCurrentUser();
+
     if (authError || !user) {
       return { expenses: null, error: { message: 'Usuário não autenticado' } };
     }
@@ -196,7 +197,7 @@ export async function getSharedExpenses(): Promise<{ expenses: SharedExpense[] |
       .maybeSingle();
 
     if (profileError) {
-      console.error('Erro ao buscar perfil do usuário:', profileError);
+      logger.error('Erro ao buscar perfil do usuário', profileError, 'PARTNERS');
       return { expenses: null, error: profileError };
     }
 
@@ -232,7 +233,7 @@ export async function getSharedExpenses(): Promise<{ expenses: SharedExpense[] |
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Erro ao buscar despesas compartilhadas:', error);
+      logger.error('Erro ao buscar despesas compartilhadas', error, 'PARTNERS');
       return { expenses: null, error };
     }
 
@@ -251,7 +252,7 @@ export async function getSharedExpenses(): Promise<{ expenses: SharedExpense[] |
 
     return { expenses: sharedExpenses, error: null };
   } catch (error) {
-    console.error('Erro inesperado ao buscar despesas compartilhadas:', error);
+    logger.error('Erro inesperado ao buscar despesas compartilhadas', error, 'PARTNERS');
     return { expenses: null, error };
   }
 }
@@ -259,7 +260,7 @@ export async function getSharedExpenses(): Promise<{ expenses: SharedExpense[] |
 // Obter despesas individuais do parceiro
 export async function getPartnerIndividualExpenses(): Promise<{ expenses: SharedExpense[] | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
 
     if (authError || !user) {
       return { expenses: null, error: { message: 'Usuário não autenticado' } };
@@ -273,7 +274,7 @@ export async function getPartnerIndividualExpenses(): Promise<{ expenses: Shared
       .maybeSingle();
 
     if (profileError) {
-      console.error('Erro ao buscar perfil do usuário:', profileError);
+      logger.error('Erro ao buscar perfil do usuário', profileError, 'PARTNERS');
       return { expenses: null, error: profileError };
     }
 
@@ -304,7 +305,7 @@ export async function getPartnerIndividualExpenses(): Promise<{ expenses: Shared
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Erro ao buscar despesas do parceiro:', error);
+      logger.error('Erro ao buscar despesas do parceiro', error, 'PARTNERS');
       return { expenses: null, error };
     }
 
@@ -322,7 +323,7 @@ export async function getPartnerIndividualExpenses(): Promise<{ expenses: Shared
 
     return { expenses: partnerExpenses, error: null };
   } catch (error) {
-    console.error('Erro inesperado ao buscar despesas do parceiro:', error);
+    logger.error('Erro inesperado ao buscar despesas do parceiro', error, 'PARTNERS');
     return { expenses: null, error };
   }
 }
@@ -338,7 +339,7 @@ export async function hasPartner(): Promise<{ hasPartner: boolean; error: any }>
 
     return { hasPartner: partner?.has_partner || false, error: null };
   } catch (error) {
-    console.error('Erro ao verificar se tem parceiro:', error);
+    logger.error('Erro ao verificar se tem parceiro', error, 'PARTNERS');
     return { hasPartner: false, error };
   }
-} 
+}
