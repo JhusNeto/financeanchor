@@ -5,6 +5,7 @@
 import { supabase } from './supabase';
 import { logger } from './logger';
 import { getCurrentUser } from './auth';
+import { cache } from './cache';
 
 export interface PartnerData {
   partner_id: string | null;
@@ -91,8 +92,11 @@ export async function getPartnerData(): Promise<{ partner: PartnerData | null; e
     const { user, error: authError } = await getCurrentUser();
 
     if (authError || !user) {
+      logger.error('Usuário não autenticado', authError, 'PARTNERS');
       return { partner: null, error: { message: 'Usuário não autenticado' } };
     }
+
+    logger.info('Buscando dados do parceiro para usuário', { userId: user.id }, 'PARTNERS');
 
     // Buscar perfil do usuário atual
     const { data: userProfile, error: profileError } = await supabase
@@ -106,9 +110,11 @@ export async function getPartnerData(): Promise<{ partner: PartnerData | null; e
       return { partner: null, error: profileError };
     }
 
+    logger.info('Perfil do usuário encontrado', { userProfile }, 'PARTNERS');
+
     // Se o perfil não existe, criar um perfil básico
     if (!userProfile) {
-      logger.info('Perfil do usuário não encontrado, criando perfil básico', undefined, 'PARTNERS');
+      logger.info('Perfil do usuário não encontrado, criando perfil básico', { userId: user.id }, 'PARTNERS');
       
       // Criar perfil básico
       const { data: newProfile, error: createError } = await supabase
@@ -116,15 +122,19 @@ export async function getPartnerData(): Promise<{ partner: PartnerData | null; e
         .insert({
           id: user.id,
           full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuário',
-          partner_id: null
+          partner_id: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
-        .select('partner_id')
+        .select('*')
         .single();
 
       if (createError) {
         logger.error('Erro ao criar perfil do usuário', createError, 'PARTNERS');
         return { partner: null, error: createError };
       }
+
+      logger.info('Perfil básico criado com sucesso', { newProfile }, 'PARTNERS');
 
       // Retornar dados sem parceiro
       return { 
@@ -140,6 +150,7 @@ export async function getPartnerData(): Promise<{ partner: PartnerData | null; e
 
     // Se não tem parceiro
     if (!userProfile?.partner_id) {
+      logger.info('Usuário não tem parceiro vinculado', { userProfile }, 'PARTNERS');
       return { 
         partner: {
           partner_id: null,
@@ -150,6 +161,8 @@ export async function getPartnerData(): Promise<{ partner: PartnerData | null; e
         error: null 
       };
     }
+
+    logger.info('Usuário tem parceiro, buscando dados do parceiro', { partnerId: userProfile.partner_id }, 'PARTNERS');
 
     // Buscar dados do parceiro
     const { data: partnerProfile, error: partnerError } = await supabase
@@ -166,12 +179,16 @@ export async function getPartnerData(): Promise<{ partner: PartnerData | null; e
       return { partner: null, error: partnerError };
     }
 
+    logger.info('Dados do parceiro encontrados', { partnerProfile }, 'PARTNERS');
+
     const partnerData: PartnerData = {
       partner_id: partnerProfile.id,
       partner_name: partnerProfile.full_name,
       partner_email: null, // Email não está disponível na tabela profiles
       has_partner: true
     };
+
+    logger.info('Retornando dados do parceiro', { partnerData }, 'PARTNERS');
 
     return { partner: partnerData, error: null };
   } catch (error) {
@@ -355,5 +372,144 @@ export async function hasPartner(): Promise<{ hasPartner: boolean; error: any }>
   } catch (error) {
     logger.error('Erro ao verificar se tem parceiro', error, 'PARTNERS');
     return { hasPartner: false, error };
+  }
+}
+
+// Função de debug para verificar o estado do sistema de parceiros
+export async function debugPartnerSystem(): Promise<any> {
+  try {
+    const { user, error: authError } = await getCurrentUser();
+
+    if (authError || !user) {
+      return { error: 'Usuário não autenticado' };
+    }
+
+    logger.info('🔍 Iniciando debug do sistema de parceiros', { userId: user.id }, 'PARTNERS');
+
+    // 1. Verificar perfil do usuário
+    const { data: userProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    logger.info('📊 Perfil do usuário:', { userProfile, profileError }, 'PARTNERS');
+
+    // 2. Verificar se tem parceiro
+    const { partner: partnerData, error: partnerError } = await getPartnerData();
+    logger.info('👥 Dados do parceiro:', { partnerData, partnerError }, 'PARTNERS');
+
+    // 3. Verificar despesas compartilhadas
+    const { expenses: sharedExpenses, error: sharedError } = await getSharedExpenses();
+    logger.info('💰 Despesas compartilhadas:', { 
+      count: sharedExpenses?.length || 0, 
+      error: sharedError 
+    }, 'PARTNERS');
+
+    // 4. Verificar despesas do parceiro
+    const { expenses: partnerExpenses, error: partnerExpError } = await getPartnerIndividualExpenses();
+    logger.info('👤 Despesas do parceiro:', { 
+      count: partnerExpenses?.length || 0, 
+      error: partnerExpError 
+    }, 'PARTNERS');
+
+    // 5. Verificar estrutura da tabela profiles
+    const { data: profilesStructure, error: structureError } = await supabase
+      .from('profiles')
+      .select('*')
+      .limit(1);
+
+    logger.info('🏗️ Estrutura da tabela profiles:', { 
+      hasData: !!profilesStructure?.length, 
+      error: structureError 
+    }, 'PARTNERS');
+
+    // 6. Verificar estrutura da tabela expenses
+    const { data: expensesStructure, error: expensesStructureError } = await supabase
+      .from('expenses')
+      .select('*')
+      .limit(1);
+
+    logger.info('🏗️ Estrutura da tabela expenses:', { 
+      hasData: !!expensesStructure?.length, 
+      error: expensesStructureError 
+    }, 'PARTNERS');
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email
+      },
+      profile: userProfile,
+      partner: partnerData,
+      sharedExpenses: {
+        count: sharedExpenses?.length || 0,
+        error: sharedError
+      },
+      partnerExpenses: {
+        count: partnerExpenses?.length || 0,
+        error: partnerExpError
+      },
+      structure: {
+        profiles: {
+          hasData: !!profilesStructure?.length,
+          error: structureError
+        },
+        expenses: {
+          hasData: !!expensesStructure?.length,
+          error: expensesStructureError
+        }
+      }
+    };
+
+  } catch (error) {
+    logger.error('💥 Erro inesperado no debug do sistema de parceiros', error, 'PARTNERS');
+    return { error: error instanceof Error ? error.message : 'Erro desconhecido' };
+  }
+}
+
+// Função para limpar cache e forçar nova verificação
+export async function refreshPartnerData(): Promise<{ success: boolean; message: string }> {
+  try {
+    const { user, error: authError } = await getCurrentUser();
+
+    if (authError || !user) {
+      return { success: false, message: 'Usuário não autenticado' };
+    }
+
+    logger.info('🔄 Limpando cache e forçando nova verificação', { userId: user.id }, 'PARTNERS');
+
+    // Limpar cache relacionado a parceiros
+    const cacheKeys = [
+      `partner_data_${user.id}`,
+      `shared_expenses_${user.id}`,
+      `partner_expenses_${user.id}`
+    ];
+
+    cacheKeys.forEach(key => {
+      // Como não temos método delete no cache, vamos sobrescrever com dados vazios
+      cache.set(key, null, 1); // TTL de 1ms para expirar imediatamente
+    });
+
+    // Forçar nova verificação dos dados
+    const { partner: partnerData, error: partnerError } = await getPartnerData();
+    
+    if (partnerError) {
+      logger.error('❌ Erro ao recarregar dados do parceiro', partnerError, 'PARTNERS');
+      return { success: false, message: 'Erro ao recarregar dados do parceiro' };
+    }
+
+    logger.info('✅ Dados do parceiro recarregados com sucesso', { partnerData }, 'PARTNERS');
+
+    return { 
+      success: true, 
+      message: partnerData?.has_partner 
+        ? `Parceiro recarregado: ${partnerData.partner_name}` 
+        : 'Nenhum parceiro encontrado' 
+    };
+
+  } catch (error) {
+    logger.error('💥 Erro inesperado ao recarregar dados do parceiro', error, 'PARTNERS');
+    return { success: false, message: 'Erro inesperado ao recarregar dados' };
   }
 }

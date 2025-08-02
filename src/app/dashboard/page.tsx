@@ -203,18 +203,18 @@ export default function DashboardPage() {
 
   const loadPartnerData = useCallback(async () => {
     try {
+      console.log('🔍 Carregando dados do parceiro...');
       const cacheKey = `partner_data_${user?.id}`;
-      const { partner: partnerDataResult, error: partnerError } = await loadDataWithCache(
-        cacheKey,
-        () => getPartnerData(),
-        10 * 60 * 1000 // 10 minutos de cache
-      );
       
-      if (!partnerError && partnerDataResult) {
-        setPartnerData(partnerDataResult);
+      // Verificar cache primeiro
+      const cached = cache.get<PartnerData>(cacheKey);
+      if (cached) {
+        console.log('📦 Dados do parceiro encontrados no cache:', cached);
+        setPartnerData(cached);
         
         // Carregar despesas compartilhadas se tiver parceiro
-        if (partnerDataResult.has_partner) {
+        if (cached.has_partner) {
+          console.log('👥 Usuário tem parceiro, carregando despesas compartilhadas...');
           const { expenses: sharedExpensesData, error: sharedError } = await loadDataWithCache(
             `shared_expenses_${user?.id}`,
             () => getSharedExpenses(),
@@ -222,6 +222,7 @@ export default function DashboardPage() {
           );
           
           if (!sharedError && sharedExpensesData) {
+            console.log('💰 Despesas compartilhadas carregadas:', sharedExpensesData.length);
             setSharedExpenses(sharedExpensesData);
           }
 
@@ -232,12 +233,57 @@ export default function DashboardPage() {
           );
           
           if (!partnerExpError && partnerExpensesData) {
+            console.log('👤 Despesas do parceiro carregadas:', partnerExpensesData.length);
             setPartnerExpenses(partnerExpensesData);
           }
         }
+        return;
+      }
+
+      console.log('🔄 Cache não encontrado, buscando dados do parceiro...');
+      const { partner: partnerDataResult, error: partnerError } = await getPartnerData();
+      
+      console.log('📊 Resultado da busca de dados do parceiro:', { partnerDataResult, partnerError });
+      
+      if (!partnerError && partnerDataResult) {
+        console.log('✅ Dados do parceiro carregados com sucesso:', partnerDataResult);
+        setPartnerData(partnerDataResult);
+        
+        // Salvar no cache
+        cache.set(cacheKey, partnerDataResult, 10 * 60 * 1000);
+        
+        // Carregar despesas compartilhadas se tiver parceiro
+        if (partnerDataResult.has_partner) {
+          console.log('👥 Usuário tem parceiro, carregando despesas compartilhadas...');
+          const { expenses: sharedExpensesData, error: sharedError } = await loadDataWithCache(
+            `shared_expenses_${user?.id}`,
+            () => getSharedExpenses(),
+            2 * 60 * 1000 // 2 minutos de cache
+          );
+          
+          if (!sharedError && sharedExpensesData) {
+            console.log('💰 Despesas compartilhadas carregadas:', sharedExpensesData.length);
+            setSharedExpenses(sharedExpensesData);
+          }
+
+          const { expenses: partnerExpensesData, error: partnerExpError } = await loadDataWithCache(
+            `partner_expenses_${user?.id}`,
+            () => getPartnerIndividualExpenses(),
+            2 * 60 * 1000 // 2 minutos de cache
+          );
+          
+          if (!partnerExpError && partnerExpensesData) {
+            console.log('👤 Despesas do parceiro carregadas:', partnerExpensesData.length);
+            setPartnerExpenses(partnerExpensesData);
+          }
+        } else {
+          console.log('❌ Usuário não tem parceiro vinculado');
+        }
+      } else {
+        console.error('❌ Erro ao carregar dados do parceiro:', partnerError);
       }
     } catch (error) {
-      console.error('Erro ao carregar dados do parceiro:', error);
+      console.error('💥 Erro inesperado ao carregar dados do parceiro:', error);
     }
   }, [user?.id, loadDataWithCache]);
 
