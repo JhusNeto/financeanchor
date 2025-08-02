@@ -106,7 +106,8 @@ export default function DashboardPage() {
       setPartnerData({
         has_partner: false,
         partner_name: null,
-        partner_id: null
+        partner_id: null,
+        partner_email: null,
       });
       
       setSharedExpenses([]);
