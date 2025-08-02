@@ -167,7 +167,10 @@ export async function getProfile(userId: string) {
 
       if (createError) {
         logger.error('Erro ao criar perfil', createError, 'AUTH');
-        return { profile: null, error: createError as AuthError };
+        // `createError` is a `PostgrestError`, which doesn't extend `AuthError`.
+        // Cast through `unknown` so the value can be returned in the function's
+        // expected `AuthError` slot while preserving the original error data.
+        return { profile: null, error: createError as unknown as AuthError };
       }
 
       return { profile: newProfile as Profile, error: null };

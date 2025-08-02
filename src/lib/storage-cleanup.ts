@@ -41,7 +41,10 @@ export function clearAllStorage() {
     if ('indexedDB' in window) {
       indexedDB.databases().then(databases => {
         databases.forEach(db => {
-          indexedDB.deleteDatabase(db.name);
+          // `db.name` may be `undefined`, so guard before deleting.
+          if (db.name) {
+            indexedDB.deleteDatabase(db.name);
+          }
         });
       });
       console.log('✅ IndexedDB limpo');
@@ -106,9 +109,10 @@ export function getStorageInfo(): StorageInfo {
 // Função para limpar cache específico da aplicação
 export function clearAppCache() {
   try {
-    // Limpar cache do nosso sistema
-    if (typeof window !== 'undefined' && window.cache) {
-      window.cache.clear();
+    // Limpar cache do nosso sistema. `window.cache` não é uma propriedade
+    // padronizada, então acessamos via `any` para evitar erros de tipo.
+    if (typeof window !== 'undefined' && (window as any).cache) {
+      (window as any).cache.clear();
       console.log('✅ Cache da aplicação limpo');
     }
 

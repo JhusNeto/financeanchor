@@ -238,17 +238,25 @@ export async function getSharedExpenses(): Promise<{ expenses: SharedExpense[] |
     }
 
     // Transformar dados para o formato esperado
-    const sharedExpenses: SharedExpense[] = (expenses || []).map(expense => ({
-      id: expense.id,
-      user_id: expense.user_id,
-      description: expense.description,
-      amount: expense.amount,
-      date: expense.date,
-      category: expense.category,
-      is_shared: expense.is_shared,
-      created_by_name: expense.profiles?.full_name || 'Usuário',
-      created_by_email: expense.profiles?.email || ''
-    }));
+    const sharedExpenses: SharedExpense[] = (expenses || []).map(expense => {
+      // Supabase returns joined `profiles` data as an array. Grab the first
+      // entry when it exists to simplify downstream access.
+      const profile = Array.isArray(expense.profiles)
+        ? expense.profiles[0]
+        : expense.profiles;
+
+      return {
+        id: expense.id,
+        user_id: expense.user_id,
+        description: expense.description,
+        amount: expense.amount,
+        date: expense.date,
+        category: expense.category,
+        is_shared: expense.is_shared,
+        created_by_name: profile?.full_name || 'Usuário',
+        created_by_email: profile?.email || ''
+      };
+    });
 
     return { expenses: sharedExpenses, error: null };
   } catch (error) {
@@ -309,17 +317,23 @@ export async function getPartnerIndividualExpenses(): Promise<{ expenses: Shared
       return { expenses: null, error };
     }
 
-    const partnerExpenses: SharedExpense[] = (expenses || []).map(expense => ({
-      id: expense.id,
-      user_id: expense.user_id,
-      description: expense.description,
-      amount: expense.amount,
-      date: expense.date,
-      category: expense.category,
-      is_shared: expense.is_shared,
-      created_by_name: expense.profiles?.full_name || 'Usuário',
-      created_by_email: expense.profiles?.email || ''
-    }));
+    const partnerExpenses: SharedExpense[] = (expenses || []).map(expense => {
+      const profile = Array.isArray(expense.profiles)
+        ? expense.profiles[0]
+        : expense.profiles;
+
+      return {
+        id: expense.id,
+        user_id: expense.user_id,
+        description: expense.description,
+        amount: expense.amount,
+        date: expense.date,
+        category: expense.category,
+        is_shared: expense.is_shared,
+        created_by_name: profile?.full_name || 'Usuário',
+        created_by_email: profile?.email || ''
+      };
+    });
 
     return { expenses: partnerExpenses, error: null };
   } catch (error) {

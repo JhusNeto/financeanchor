@@ -9,7 +9,9 @@ export function useDebounce<T extends (...args: any[]) => any>(
   callback: T,
   delay: number
 ): T {
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  // `useRef` requires an initial value. Initialize with `null` and allow it to
+  // store the timer when one is scheduled.
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   return useCallback(
     ((...args: any[]) => {
@@ -28,7 +30,9 @@ export function useThrottle<T extends (...args: any[]) => any>(
   delay: number
 ): T {
   const lastCall = useRef(0);
-  const lastCallTimer = useRef<NodeJS.Timeout>();
+  // Same as above, initialize the timer reference to `null` so it can be
+  // safely cleared and reassigned.
+  const lastCallTimer = useRef<NodeJS.Timeout | null>(null);
 
   return useCallback(
     ((...args: any[]) => {
