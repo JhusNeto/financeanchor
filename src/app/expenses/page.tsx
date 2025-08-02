@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getExpensesByMonth, getWeeklyTotal } from '@/lib/expenses';
+import { getExpensesByMonth, getWeeklyTotal, deleteExpense } from '@/lib/expenses';
 import { getCurrentUser } from '@/lib/auth';
 import { CATEGORY_ICONS, CATEGORY_COLORS, Expense } from '@/types/expense';
 import { getPartnerData, getSharedExpenses, getPartnerIndividualExpenses, PartnerData, SharedExpense } from '@/lib/partners';
@@ -22,6 +22,9 @@ export default function ExpensesPage() {
   const [partnerData, setPartnerData] = useState<PartnerData | null>(null);
   const [sharedExpenses, setSharedExpenses] = useState<SharedExpense[]>([]);
   const [partnerExpenses, setPartnerExpenses] = useState<SharedExpense[]>([]);
+  const [deletingExpense, setDeletingExpense] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -37,6 +40,7 @@ export default function ExpensesPage() {
         router.push('/auth/login');
         return;
       }
+      setUser(user);
     } catch (error) {
       router.push('/auth/login');
     }
@@ -112,12 +116,68 @@ export default function ExpensesPage() {
     }).format(value);
   };
 
-  const formatTime = (dateString: string): string => {
+    const formatTime = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleTimeString('pt-BR', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
     });
+  };
+
+  const handleDeleteExpense = async (expenseId: string) => {
+    try {
+      setDeletingExpense(expenseId);
+      
+      const { success, error } = await deleteExpense(expenseId);
+      
+      if (success) {
+        // Recarregar apenas despesas individuais, mantendo as compartilhadas
+        const { expensesByDate: monthData, error: monthError } = await getExpensesByMonth();
+        if (!monthError) {
+          setExpensesByDate(monthData || []);
+        }
+        
+        // Recarregar total semanal
+        const { weeklyTotal: weekTotal } = await getWeeklyTotal();
+        setWeeklyTotal(weekTotal);
+        
+        setShowDeleteConfirm(null);
+      } else {
+        console.error('Erro ao deletar despesa:', error);
+        alert('Erro ao deletar despesa. Tente novamente.');
+      }
+    } catch (error) {
+      console.error('Erro inesperado ao deletar despesa:', error);
+      alert('Erro inesperado ao deletar despesa.');
+    } finally {
+      setDeletingExpense(null);
+    }
+  };
+
+  const handleDeleteSharedExpense = async (expenseId: string) => {
+    try {
+      setDeletingExpense(expenseId);
+      
+      const { success, error } = await deleteExpense(expenseId);
+      
+      if (success) {
+        // Recarregar apenas despesas compartilhadas
+        if (partnerData?.has_partner) {
+          const { expenses: sharedExpensesData } = await getSharedExpenses();
+          setSharedExpenses(sharedExpensesData || []);
+        }
+        
+        setShowDeleteConfirm(null);
+      } else {
+        console.error('Erro ao deletar despesa compartilhada:', error);
+        alert('Erro ao deletar despesa compartilhada. Tente novamente.');
+      }
+    } catch (error) {
+      console.error('Erro inesperado ao deletar despesa compartilhada:', error);
+      alert('Erro inesperado ao deletar despesa compartilhada.');
+    } finally {
+      setDeletingExpense(null);
+    }
   };
 
   if (!mounted) {
@@ -138,49 +198,49 @@ export default function ExpensesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="bg-white shadow-sm border-b border-gray-200 safe-area-top">
+        <div className="max-w-screen-sm mx-auto px-4">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-3">
               <Link
                 href="/dashboard"
-                className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors"
+                className="w-12 h-12 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors touch-target"
               >
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </Link>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Histórico de Despesas</h1>
+                <h1 className="text-lg font-bold text-gray-900">Histórico de Despesas</h1>
                 <p className="text-sm text-gray-500">Mês atual</p>
               </div>
             </div>
             <Link
               href="/expenses/new"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium flex items-center space-x-2"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors text-sm font-medium flex items-center space-x-2 touch-target"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              <span>Nova Despesa</span>
+              <span>Nova</span>
             </Link>
           </div>
         </div>
       </header>
 
       {/* Weekly Total Bar */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white py-6">
+        <div className="max-w-screen-sm mx-auto px-4">
           <div className="text-center">
-            <h2 className="text-lg font-medium mb-1">Total desta semana</h2>
-            <p className="text-3xl font-bold">{formatCurrency(weeklyTotal)}</p>
-            <p className="text-blue-100 text-sm mt-1">Domingo a sábado</p>
+            <h2 className="text-lg font-medium mb-2">Total desta semana</h2>
+            <p className="text-4xl font-bold">{formatCurrency(weeklyTotal)}</p>
+            <p className="text-blue-100 text-sm mt-2">Domingo a sábado</p>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <main className="max-w-screen-sm mx-auto py-4 px-4 safe-area-bottom">
         {error ? (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
             <div className="flex">
@@ -261,10 +321,37 @@ export default function ExpensesPage() {
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right flex items-center space-x-2">
                           <p className="text-sm font-bold text-white">
                             {formatCurrency(expense.amount)}
                           </p>
+                          
+                          {/* Botões de ação para despesas compartilhadas */}
+                          {expense.user_id === user?.id && (
+                            <>
+                              {/* Edit Button */}
+                              <Link
+                                href={`/expenses/edit/${expense.id}`}
+                                className="p-1 text-white hover:text-blue-200 hover:bg-white hover:bg-opacity-20 rounded transition-colors"
+                                title="Editar despesa"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </Link>
+                              
+                              {/* Delete Button */}
+                              <button
+                                onClick={() => setShowDeleteConfirm(expense.id)}
+                                className="p-1 text-white hover:text-red-200 hover:bg-white hover:bg-opacity-20 rounded transition-colors"
+                                title="Excluir despesa"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -403,11 +490,33 @@ export default function ExpensesPage() {
                           )}
                         </div>
 
-                        {/* Amount */}
-                        <div className="flex-shrink-0 ml-4">
+                        {/* Amount and Actions */}
+                        <div className="flex-shrink-0 ml-4 flex items-center space-x-3">
                           <p className="text-lg font-semibold text-gray-900">
                             {formatCurrency(expense.amount)}
                           </p>
+                          
+                          {/* Edit Button */}
+                          <Link
+                            href={`/expenses/edit/${expense.id}`}
+                            className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors touch-target"
+                            title="Editar despesa"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </Link>
+                          
+                          {/* Delete Button */}
+                          <button
+                            onClick={() => setShowDeleteConfirm(expense.id)}
+                            className="p-3 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors touch-target"
+                            title="Excluir despesa"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -415,6 +524,48 @@ export default function ExpensesPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Modal de Confirmação de Exclusão */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 safe-area-top safe-area-bottom">
+            <div className="bg-white rounded-xl p-6 max-w-sm w-full mx-4">
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900">Confirmar Exclusão</h3>
+              </div>
+              <p className="text-gray-600 mb-8 text-base">
+                Tem certeza que deseja excluir esta despesa? Esta ação não pode ser desfeita.
+              </p>
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => setShowDeleteConfirm(null)}
+                  className="flex-1 px-6 py-4 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors touch-target text-base font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    // Verificar se é uma despesa compartilhada
+                    const isSharedExpense = sharedExpenses.some(exp => exp.id === showDeleteConfirm);
+                    if (isSharedExpense) {
+                      handleDeleteSharedExpense(showDeleteConfirm);
+                    } else {
+                      handleDeleteExpense(showDeleteConfirm);
+                    }
+                  }}
+                  disabled={deletingExpense === showDeleteConfirm}
+                  className="flex-1 px-6 py-4 text-white bg-red-600 hover:bg-red-700 disabled:bg-red-400 rounded-lg transition-colors touch-target text-base font-medium"
+                >
+                  {deletingExpense === showDeleteConfirm ? 'Excluindo...' : 'Excluir'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </main>

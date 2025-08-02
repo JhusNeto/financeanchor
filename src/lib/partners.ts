@@ -238,11 +238,7 @@ export async function getSharedExpenses(): Promise<{ expenses: SharedExpense[] |
         amount,
         date,
         category,
-        is_shared,
-        profiles!expenses_user_id_fkey (
-          full_name,
-          email
-        )
+        is_shared
       `)
       .or(`user_id.eq.${user.id},user_id.eq.${userProfile.partner_id}`)
       .eq('is_shared', true)
@@ -254,13 +250,31 @@ export async function getSharedExpenses(): Promise<{ expenses: SharedExpense[] |
       return { expenses: null, error };
     }
 
+    // Buscar dados dos perfis separadamente
+    const userIds = (expenses || []).map(e => e.user_id);
+    let profilesData: any[] = [];
+
+    if (userIds.length > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', userIds);
+
+      if (profilesError) {
+        logger.error('Erro ao buscar perfis', profilesError, 'PARTNERS');
+      } else {
+        profilesData = profiles || [];
+      }
+    }
+
+    // Criar mapa de perfis para acesso rápido
+    const profilesMap = new Map(
+      profilesData.map(profile => [profile.id, profile])
+    );
+
     // Transformar dados para o formato esperado
     const sharedExpenses: SharedExpense[] = (expenses || []).map(expense => {
-      // Supabase returns joined `profiles` data as an array. Grab the first
-      // entry when it exists to simplify downstream access.
-      const profile = Array.isArray(expense.profiles)
-        ? expense.profiles[0]
-        : expense.profiles;
+      const profile = profilesMap.get(expense.user_id);
 
       return {
         id: expense.id,
@@ -318,11 +332,7 @@ export async function getPartnerIndividualExpenses(): Promise<{ expenses: Shared
         amount,
         date,
         category,
-        is_shared,
-        profiles!expenses_user_id_fkey (
-          full_name,
-          email
-        )
+        is_shared
       `)
       .eq('user_id', userProfile.partner_id)
       .eq('is_shared', false)
@@ -334,11 +344,18 @@ export async function getPartnerIndividualExpenses(): Promise<{ expenses: Shared
       return { expenses: null, error };
     }
 
-    const partnerExpenses: SharedExpense[] = (expenses || []).map(expense => {
-      const profile = Array.isArray(expense.profiles)
-        ? expense.profiles[0]
-        : expense.profiles;
+    // Buscar dados do perfil do parceiro
+    const { data: partnerProfile, error: partnerProfileError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .eq('id', userProfile.partner_id)
+      .single();
 
+    if (partnerProfileError) {
+      logger.error('Erro ao buscar perfil do parceiro', partnerProfileError, 'PARTNERS');
+    }
+
+    const partnerExpenses: SharedExpense[] = (expenses || []).map(expense => {
       return {
         id: expense.id,
         user_id: expense.user_id,
@@ -347,8 +364,8 @@ export async function getPartnerIndividualExpenses(): Promise<{ expenses: Shared
         date: expense.date,
         category: expense.category,
         is_shared: expense.is_shared,
-        created_by_name: profile?.full_name || 'Usuário',
-        created_by_email: profile?.email || ''
+        created_by_name: partnerProfile?.full_name || 'Usuário',
+        created_by_email: partnerProfile?.email || ''
       };
     });
 

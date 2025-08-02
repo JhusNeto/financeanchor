@@ -1,0 +1,26 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="128" fill="#003366"/>
+  
+  <!-- Âncora estilizada -->
+  <g transform="translate(128, 128) scale(0.5)">
+    <!-- Círculo da âncora -->
+    <circle cx="256" cy="256" r="200" fill="none" stroke="white" stroke-width="16"/>
+    
+    <!-- Haste da âncora -->
+    <rect x="240" y="120" width="32" height="200" fill="white" rx="16"/>
+    
+    <!-- Braços da âncora -->
+    <path d="M 120 200 L 200 200 L 200 240 L 120 240 Z" fill="white"/>
+    <path d="M 312 200 L 392 200 L 392 240 L 312 240 Z" fill="white"/>
+    
+    <!-- Anel da âncora -->
+    <circle cx="256" cy="120" r="24" fill="white"/>
+    
+    <!-- Símbolo de dinheiro -->
+    <circle cx="256" cy="320" r="40" fill="#FFD700"/>
+    <text x="256" y="330" text-anchor="middle" fill="#003366" font-family="Arial, sans-serif" font-size="32" font-weight="bold">$</text>
+  </g>
+  
+  <!-- Texto "FA" -->
+  <text x="256" y="480" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="48" font-weight="bold">FA</text>
+</svg> 
