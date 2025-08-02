@@ -1,5 +1,5 @@
 // Service Worker para FinanceAnchor
-const CACHE_NAME = 'financeanchor-v1';
+const CACHE_NAME = 'financeanchor-v2';
 const urlsToCache = [
   '/',
   '/auth/login',
@@ -16,6 +16,13 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
+  // Não intercepta requisições de assets do Next.js ou APIs
+  if (url.pathname.startsWith('/_next/') || url.pathname.startsWith('/api/')) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -37,4 +44,4 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
-}); 
+});
