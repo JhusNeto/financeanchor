@@ -3,15 +3,20 @@
 // =====================================================
 
 import { supabase } from './supabase';
+import { getCurrentUser, isGuestUser } from './auth';
 import { Debt, CreateDebtData, UpdateDebtData, DebtSummary } from '@/types/debt';
 
 // Criar nova dívida
 export async function createDebt(debtData: CreateDebtData): Promise<{ debt: Debt | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { debt: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { debt: null, error: { message: 'Modo visitante: criação desabilitada' } };
     }
 
     const { data: debt, error } = await supabase
@@ -38,10 +43,14 @@ export async function createDebt(debtData: CreateDebtData): Promise<{ debt: Debt
 // Buscar todas as dívidas do usuário
 export async function getUserDebts(): Promise<{ debts: Debt[] | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { debts: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { debts: [], error: null };
     }
 
     const { data, error } = await supabase
@@ -64,10 +73,24 @@ export async function getUserDebts(): Promise<{ debts: Debt[] | null; error: any
 // Buscar resumo das dívidas
 export async function getDebtsSummary(): Promise<{ debtSummary: DebtSummary | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { debtSummary: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return {
+        debtSummary: {
+          total_debt: 0,
+          total_monthly_payment: 0,
+          estimated_months: 0,
+          next_due_debt: 'Nenhuma dívida',
+          next_due_amount: 0,
+          days_until_next_due: 0
+        },
+        error: null
+      };
     }
 
     const { data, error } = await supabase
@@ -100,10 +123,14 @@ export async function getDebtsSummary(): Promise<{ debtSummary: DebtSummary | nu
 // Buscar dívida por ID
 export async function getDebtById(id: string): Promise<{ debt: Debt | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { debt: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { debt: null, error: null };
     }
 
     const { data: debt, error } = await supabase
@@ -128,10 +155,14 @@ export async function getDebtById(id: string): Promise<{ debt: Debt | null; erro
 // Atualizar dívida
 export async function updateDebt(id: string, updates: UpdateDebtData): Promise<{ debt: Debt | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { debt: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { debt: null, error: { message: 'Modo visitante: edição desabilitada' } };
     }
 
     const { data: debt, error } = await supabase
@@ -157,10 +188,14 @@ export async function updateDebt(id: string, updates: UpdateDebtData): Promise<{
 // Deletar dívida
 export async function deleteDebt(id: string): Promise<{ success: boolean; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { success: false, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { success: false, error: { message: 'Modo visitante: exclusão desabilitada' } };
     }
 
     const { error } = await supabase
@@ -184,10 +219,14 @@ export async function deleteDebt(id: string): Promise<{ success: boolean; error:
 // Buscar dívidas por dia do vencimento
 export async function getDebtsByDueDay(dueDay: number): Promise<{ debts: Debt[] | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { debts: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { debts: [], error: null };
     }
 
     const { data: debts, error } = await supabase
@@ -212,10 +251,14 @@ export async function getDebtsByDueDay(dueDay: number): Promise<{ debts: Debt[] 
 // Buscar próximas dívidas a vencer (próximos 7 dias)
 export async function getUpcomingDebts(days: number = 7): Promise<{ debts: Debt[] | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { debts: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { debts: [], error: null };
     }
 
     const today = new Date();
@@ -247,10 +290,22 @@ export async function getUpcomingDebts(days: number = 7): Promise<{ debts: Debt[
 // Calcular estatísticas das dívidas
 export async function getDebtStats(): Promise<{ stats: any; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { stats: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return {
+        stats: {
+          totalDebts: 0,
+          totalAmount: 0,
+          totalMonthlyPayment: 0,
+          averageMonthlyPayment: 0
+        },
+        error: null
+      };
     }
 
     const { data: debts, error } = await supabase

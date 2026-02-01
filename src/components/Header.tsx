@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth';
+import { isGuestUser, useAuth } from '@/lib/auth';
 import { Cog6ToothIcon, UserIcon } from '@heroicons/react/24/outline';
 
 export default function Header() {
@@ -10,10 +10,11 @@ export default function Header() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const router = useRouter();
   const { user, signOut } = useAuth();
+  const isGuest = isGuestUser(user);
 
   const handleSignOut = async () => {
     await signOut();
-    router.push('/auth/login');
+    router.push('/dashboard');
   };
 
   return (
@@ -69,12 +70,17 @@ export default function Header() {
                     <UserIcon className="w-4 h-4 text-blue-600" />
                   </div>
                   <span className="hidden md:block text-sm text-gray-700">
-                    {user.email}
+                    {isGuest ? 'Visitante' : user.email}
                   </span>
                 </button>
 
                 {isUserMenuOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                    {isGuest && (
+                      <div className="px-4 py-2 text-xs text-blue-600">
+                        Modo visitante
+                      </div>
+                    )}
                     <button
                       onClick={() => {
                         router.push('/settings');

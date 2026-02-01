@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth';
+import { isGuestUser, useAuth } from '@/lib/auth';
 import { 
   ArrowLeftIcon, 
   DocumentArrowDownIcon,
@@ -13,11 +13,16 @@ import {
 export default function ExportPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const isGuest = isGuestUser(user);
   const [isExporting, setIsExporting] = useState(false);
   const [exportType, setExportType] = useState<string>('');
 
   const handleExport = async (type: 'json' | 'excel' | 'pdf') => {
     if (!user) return;
+    if (isGuest) {
+      alert('Modo visitante: exportação desativada.');
+      return;
+    }
     
     setIsExporting(true);
     setExportType(type);
@@ -70,6 +75,11 @@ export default function ExportPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {isGuest && (
+        <div className="bg-blue-50 border-b border-blue-100 text-blue-700 text-sm px-4 py-3 text-center">
+          Você está em modo visitante. A exportação está desativada.
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-4xl mx-auto px-4 py-4">

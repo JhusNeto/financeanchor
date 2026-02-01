@@ -1,13 +1,18 @@
 import { supabase } from './supabase';
+import { getCurrentUser, isGuestUser } from './auth';
 import { Expense, CreateExpenseData, UpdateExpenseData } from '@/types/expense';
 
 // Criar nova despesa
 export async function createExpense(expenseData: CreateExpenseData): Promise<{ expense: Expense | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { expense: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { expense: null, error: { message: 'Modo visitante: criação desabilitada' } };
     }
 
     const { data: expense, error } = await supabase
@@ -34,10 +39,14 @@ export async function createExpense(expenseData: CreateExpenseData): Promise<{ e
 // Buscar despesas do usuário
 export async function getUserExpenses(limit = 50): Promise<{ expenses: Expense[] | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { expenses: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { expenses: [], error: null };
     }
 
     const { data: expenses, error } = await supabase
@@ -63,10 +72,14 @@ export async function getUserExpenses(limit = 50): Promise<{ expenses: Expense[]
 // Buscar despesas do mês atual agrupadas por data
 export async function getExpensesByMonth(): Promise<{ expensesByDate: any; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { expensesByDate: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { expensesByDate: [], error: null };
     }
 
     // Calcular início e fim do mês atual
@@ -119,10 +132,14 @@ export async function getExpensesByMonth(): Promise<{ expensesByDate: any; error
 // Calcular total da semana atual
 export async function getWeeklyTotal(): Promise<{ weeklyTotal: number; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { weeklyTotal: 0, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { weeklyTotal: 0, error: null };
     }
 
     // Calcular início e fim da semana atual (domingo a sábado)
@@ -159,10 +176,14 @@ export async function getWeeklyTotal(): Promise<{ weeklyTotal: number; error: an
 // Buscar despesa por ID
 export async function getExpenseById(id: string): Promise<{ expense: Expense | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { expense: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { expense: null, error: null };
     }
 
     const { data: expense, error } = await supabase
@@ -187,10 +208,14 @@ export async function getExpenseById(id: string): Promise<{ expense: Expense | n
 // Atualizar despesa
 export async function updateExpense(id: string, updates: UpdateExpenseData): Promise<{ expense: Expense | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { expense: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { expense: null, error: { message: 'Modo visitante: edição desabilitada' } };
     }
 
     const { data: expense, error } = await supabase
@@ -216,10 +241,14 @@ export async function updateExpense(id: string, updates: UpdateExpenseData): Pro
 // Deletar despesa
 export async function deleteExpense(id: string): Promise<{ success: boolean; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { success: false, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { success: false, error: { message: 'Modo visitante: exclusão desabilitada' } };
     }
 
     const { error } = await supabase
@@ -243,10 +272,14 @@ export async function deleteExpense(id: string): Promise<{ success: boolean; err
 // Upload de comprovante
 export async function uploadReceipt(file: File, expenseId: string): Promise<{ url: string | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { url: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { url: null, error: { message: 'Modo visitante: upload desabilitado' } };
     }
 
     // Gerar nome único para o arquivo
@@ -280,10 +313,21 @@ export async function uploadReceipt(file: File, expenseId: string): Promise<{ ur
 // Buscar estatísticas de despesas
 export async function getExpenseStats(): Promise<{ stats: any; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { stats: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return {
+        stats: {
+          totalThisMonth: 0,
+          totalThisWeek: 0,
+          totalExpenses: 0
+        },
+        error: null
+      };
     }
 
     // Total do mês atual

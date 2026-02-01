@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getCurrentUser, isGuestUser } from './auth';
 import { Achievement, AchievementType, AchievementConfig, AchievementProgress } from '../types/achievement';
 import { Expense } from '../types/expense';
 import { Goal } from '../types/goal';
@@ -95,8 +96,10 @@ export const ACHIEVEMENT_CONFIGS: Record<AchievementType, AchievementConfig> = {
 // Função para obter conquistas do usuário
 export async function getUserAchievements(): Promise<Achievement[]> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Usuário não autenticado');
+    const { user } = await getCurrentUser();
+    if (!user || isGuestUser(user)) {
+      return [];
+    }
 
     const { data, error } = await supabase
       .from('achievements')
@@ -115,8 +118,8 @@ export async function getUserAchievements(): Promise<Achievement[]> {
 // Função para verificar se usuário já tem uma conquista
 export async function hasAchievement(type: AchievementType): Promise<boolean> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
+    const { user } = await getCurrentUser();
+    if (!user || isGuestUser(user)) return false;
 
     const { data, error } = await supabase
       .from('achievements')
@@ -140,8 +143,8 @@ export async function addAchievement(
   description: string
 ): Promise<boolean> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Usuário não autenticado');
+    const { user } = await getCurrentUser();
+    if (!user || isGuestUser(user)) return false;
 
     // Verifica se já tem a conquista
     const alreadyHas = await hasAchievement(type);

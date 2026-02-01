@@ -1,13 +1,18 @@
 import { supabase } from './supabase';
+import { getCurrentUser, isGuestUser } from './auth';
 import { Budget, CreateBudgetData, UpdateBudgetData, BudgetStatus, BudgetSummary } from '@/types/budget';
 
 // Criar novo orçamento
 export async function createBudget(budgetData: CreateBudgetData): Promise<{ budget: Budget | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { budget: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { budget: null, error: { message: 'Modo visitante: criação desabilitada' } };
     }
 
     // Se não especificado, usar mês atual
@@ -39,10 +44,14 @@ export async function createBudget(budgetData: CreateBudgetData): Promise<{ budg
 // Buscar orçamentos do usuário
 export async function getUserBudgets(month?: string): Promise<{ budgets: Budget[] | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { budgets: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { budgets: [], error: null };
     }
 
     const targetMonth = month || new Date().toISOString().slice(0, 7);
@@ -69,10 +78,14 @@ export async function getUserBudgets(month?: string): Promise<{ budgets: Budget[
 // Buscar status do orçamento (usando função SQL)
 export async function getBudgetStatus(month?: string): Promise<{ budgetStatus: BudgetStatus[] | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { budgetStatus: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { budgetStatus: [], error: null };
     }
 
     const targetMonth = month || new Date().toISOString().slice(0, 7);
@@ -98,10 +111,22 @@ export async function getBudgetStatus(month?: string): Promise<{ budgetStatus: B
 // Buscar resumo do orçamento total
 export async function getBudgetSummary(month?: string): Promise<{ budgetSummary: BudgetSummary | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { budgetSummary: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return {
+        budgetSummary: {
+          total_budget: 0,
+          total_spent: 0,
+          percentage_used: 0,
+          status_color: 'green'
+        },
+        error: null
+      };
     }
 
     const targetMonth = month || new Date().toISOString().slice(0, 7);
@@ -135,10 +160,14 @@ export async function getBudgetSummary(month?: string): Promise<{ budgetSummary:
 // Atualizar orçamento
 export async function updateBudget(id: string, updates: UpdateBudgetData): Promise<{ budget: Budget | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { budget: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { budget: null, error: { message: 'Modo visitante: edição desabilitada' } };
     }
 
     const { data: budget, error } = await supabase
@@ -164,10 +193,14 @@ export async function updateBudget(id: string, updates: UpdateBudgetData): Promi
 // Deletar orçamento
 export async function deleteBudget(id: string): Promise<{ success: boolean; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { success: false, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { success: false, error: { message: 'Modo visitante: exclusão desabilitada' } };
     }
 
     const { error } = await supabase
@@ -191,10 +224,14 @@ export async function deleteBudget(id: string): Promise<{ success: boolean; erro
 // Buscar orçamento por ID
 export async function getBudgetById(id: string): Promise<{ budget: Budget | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { budget: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { budget: null, error: null };
     }
 
     const { data: budget, error } = await supabase
@@ -219,10 +256,14 @@ export async function getBudgetById(id: string): Promise<{ budget: Budget | null
 // Buscar orçamento por categoria e mês
 export async function getBudgetByCategory(category: string, month?: string): Promise<{ budget: Budget | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { budget: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { budget: null, error: null };
     }
 
     const targetMonth = month || new Date().toISOString().slice(0, 7);

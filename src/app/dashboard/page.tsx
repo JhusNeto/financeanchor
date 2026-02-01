@@ -395,7 +395,7 @@ export default function DashboardPage() {
       await signOut();
       // Limpar cache ao fazer logout
       cache.clear();
-      router.push('/auth/login');
+      router.push('/dashboard');
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     }

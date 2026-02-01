@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { getCurrentUser, isGuestUser, GUEST_USER_ID } from './auth';
 
 export interface UserPreferences {
   notifications_enabled: boolean;
@@ -21,11 +21,12 @@ const DEFAULT_PREFERENCES: UserPreferences = {
 // Função para obter preferências do usuário
 export async function getUserPreferences(): Promise<UserPreferences> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = await getCurrentUser();
     if (!user) throw new Error('Usuário não autenticado');
+    const storageKey = `preferences_${isGuestUser(user) ? GUEST_USER_ID : user.id}`;
 
     // Primeiro tenta buscar do localStorage
-    const localPreferences = localStorage.getItem(`preferences_${user.id}`);
+    const localPreferences = localStorage.getItem(storageKey);
     if (localPreferences) {
       return { ...DEFAULT_PREFERENCES, ...JSON.parse(localPreferences) };
     }
@@ -41,8 +42,9 @@ export async function getUserPreferences(): Promise<UserPreferences> {
 // Função para salvar preferências do usuário
 export async function saveUserPreferences(preferences: Partial<UserPreferences>): Promise<boolean> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = await getCurrentUser();
     if (!user) throw new Error('Usuário não autenticado');
+    const storageKey = `preferences_${isGuestUser(user) ? GUEST_USER_ID : user.id}`;
 
     // Busca preferências atuais
     const currentPreferences = await getUserPreferences();
@@ -51,7 +53,7 @@ export async function saveUserPreferences(preferences: Partial<UserPreferences>)
     const updatedPreferences = { ...currentPreferences, ...preferences };
     
     // Salva no localStorage
-    localStorage.setItem(`preferences_${user.id}`, JSON.stringify(updatedPreferences));
+    localStorage.setItem(storageKey, JSON.stringify(updatedPreferences));
     
     // TODO: Salvar no Supabase também (quando implementar tabela de preferências)
     // const { error } = await supabase
@@ -68,11 +70,12 @@ export async function saveUserPreferences(preferences: Partial<UserPreferences>)
 // Função para resetar preferências para padrão
 export async function resetUserPreferences(): Promise<boolean> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = await getCurrentUser();
     if (!user) throw new Error('Usuário não autenticado');
+    const storageKey = `preferences_${isGuestUser(user) ? GUEST_USER_ID : user.id}`;
 
     // Remove do localStorage
-    localStorage.removeItem(`preferences_${user.id}`);
+    localStorage.removeItem(storageKey);
     
     return true;
   } catch (error) {

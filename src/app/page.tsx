@@ -10,8 +10,11 @@ export default function HomePage() {
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             FinanceAnchor
           </h1>
-          <p className="text-gray-600 mb-8">
+          <p className="text-gray-600 mb-4">
             Seu pulso financeiro diário
+          </p>
+          <p className="text-sm text-blue-600 mb-8">
+            Acesso aberto: explore sem precisar fazer login.
           </p>
           
           {/* Teste de cores do Tailwind */}
@@ -29,16 +32,10 @@ export default function HomePage() {
           
           <div className="space-y-4">
             <Link
-              href="/auth/login"
+              href="/dashboard"
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors block"
             >
-              Entrar
-            </Link>
-            <Link
-              href="/auth/signup"
-              className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg transition-colors block"
-            >
-              Criar Conta
+              Explorar agora
             </Link>
           </div>
         </div>
