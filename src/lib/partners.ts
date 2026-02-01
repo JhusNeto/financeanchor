@@ -4,7 +4,7 @@
 
 import { supabase } from './supabase';
 import { logger } from './logger';
-import { getCurrentUser } from './auth';
+import { getCurrentUser, isGuestUser } from './auth';
 import { cache } from './cache';
 
 export interface PartnerData {
@@ -42,6 +42,10 @@ export async function invitePartner(partnerEmail: string): Promise<InvitePartner
       return { success: false, message: 'Usuário não autenticado' };
     }
 
+    if (isGuestUser(user)) {
+      return { success: false, message: 'Modo visitante: convite desabilitado' };
+    }
+
     const { data, error } = await supabase
       .rpc('invite_partner', {
         p_inviter_id: user.id,
@@ -69,6 +73,10 @@ export async function removePartner(): Promise<InvitePartnerResponse> {
       return { success: false, message: 'Usuário não autenticado' };
     }
 
+    if (isGuestUser(user)) {
+      return { success: false, message: 'Modo visitante: remoção desabilitada' };
+    }
+
     const { data, error } = await supabase
       .rpc('remove_partner', {
         p_user_id: user.id
@@ -94,6 +102,18 @@ export async function getPartnerData(): Promise<{ partner: PartnerData | null; e
     if (authError || !user) {
       logger.error('Usuário não autenticado', authError, 'PARTNERS');
       return { partner: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return {
+        partner: {
+          partner_id: null,
+          partner_name: null,
+          partner_email: null,
+          has_partner: false
+        },
+        error: null
+      };
     }
 
     logger.info('Buscando dados do parceiro para usuário', { userId: user.id }, 'PARTNERS');
@@ -206,6 +226,10 @@ export async function getSharedExpenses(): Promise<{ expenses: SharedExpense[] |
       return { expenses: null, error: { message: 'Usuário não autenticado' } };
     }
 
+    if (isGuestUser(user)) {
+      return { expenses: [], error: null };
+    }
+
     // Primeiro, verificar se o usuário tem parceiro
     const { data: userProfile, error: profileError } = await supabase
       .from('profiles')
@@ -305,6 +329,10 @@ export async function getPartnerIndividualExpenses(): Promise<{ expenses: Shared
       return { expenses: null, error: { message: 'Usuário não autenticado' } };
     }
 
+    if (isGuestUser(user)) {
+      return { expenses: [], error: null };
+    }
+
     // Buscar o parceiro do usuário
     const { data: userProfile, error: profileError } = await supabase
       .from('profiles')
@@ -401,6 +429,40 @@ export async function debugPartnerSystem(): Promise<any> {
       return { error: 'Usuário não autenticado' };
     }
 
+    if (isGuestUser(user)) {
+      return {
+        user: {
+          id: user.id,
+          email: user.email
+        },
+        profile: null,
+        partner: {
+          partner_id: null,
+          partner_name: null,
+          partner_email: null,
+          has_partner: false
+        },
+        sharedExpenses: {
+          count: 0,
+          error: null
+        },
+        partnerExpenses: {
+          count: 0,
+          error: null
+        },
+        structure: {
+          profiles: {
+            hasData: false,
+            error: null
+          },
+          expenses: {
+            hasData: false,
+            error: null
+          }
+        }
+      };
+    }
+
     logger.info('🔍 Iniciando debug do sistema de parceiros', { userId: user.id }, 'PARTNERS');
 
     // 1. Verificar perfil do usuário
@@ -492,6 +554,10 @@ export async function refreshPartnerData(): Promise<{ success: boolean; message:
 
     if (authError || !user) {
       return { success: false, message: 'Usuário não autenticado' };
+    }
+
+    if (isGuestUser(user)) {
+      return { success: true, message: 'Modo visitante: nenhum parceiro para recarregar' };
     }
 
     logger.info('🔄 Limpando cache e forçando nova verificação', { userId: user.id }, 'PARTNERS');

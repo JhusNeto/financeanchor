@@ -10,6 +10,20 @@ export interface Profile {
   created_at: string
 }
 
+export const GUEST_USER_ID = 'guest-user'
+export const guestUser: User = {
+  id: GUEST_USER_ID,
+  email: 'visitante@financeanchor.local',
+  user_metadata: {
+    full_name: 'Visitante'
+  },
+  app_metadata: {},
+  aud: 'authenticated',
+  created_at: new Date().toISOString(),
+} as User
+
+export const isGuestUser = (user?: User | null) => user?.id === GUEST_USER_ID
+
 // Função para criar novo usuário
 export async function signUp(email: string, password: string, fullName: string) {
   try {
@@ -87,6 +101,10 @@ export async function signIn(email: string, password: string) {
 // Função para fazer logout
 export async function signOut() {
   try {
+    const { user } = await getCurrentUser()
+    if (isGuestUser(user)) {
+      return { error: null }
+    }
     const { error } = await supabase.auth.signOut()
     if (error) {
       throw error
@@ -107,11 +125,11 @@ export async function getCurrentUser() {
     } = await supabase.auth.getSession()
 
     if (sessionError) {
-      throw sessionError
+      return { user: guestUser, error: null }
     }
 
     if (!session) {
-      return { user: null, error: null }
+      return { user: guestUser, error: null }
     }
 
     const {
@@ -120,18 +138,30 @@ export async function getCurrentUser() {
     } = await supabase.auth.getUser()
 
     if (error) {
-      throw error
+      return { user: guestUser, error: null }
     }
 
     return { user, error: null }
   } catch (error) {
-    return { user: null, error: error as AuthError }
+    return { user: guestUser, error: null }
   }
 }
 
 // Função para obter perfil do usuário
 export async function getProfile(userId: string) {
   try {
+    if (userId === GUEST_USER_ID) {
+      return {
+        profile: {
+          id: GUEST_USER_ID,
+          full_name: 'Visitante',
+          partner_id: undefined,
+          created_at: new Date().toISOString(),
+        } as Profile,
+        error: null,
+      }
+    }
+
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -218,14 +248,14 @@ export function useAuth() {
   useEffect(() => {
     // Obter usuário inicial
     getCurrentUser().then(({ user }) => {
-      setUser(user)
+      setUser(user ?? guestUser)
       setLoading(false)
     })
 
     // Escutar mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(session?.user ?? null)
+        setUser(session?.user ?? guestUser)
         setLoading(false)
       }
     )
@@ -234,8 +264,12 @@ export function useAuth() {
   }, [])
 
   const signOutUser = async () => {
+    if (isGuestUser(user)) {
+      setUser(guestUser)
+      return
+    }
     await signOut()
-    setUser(null)
+    setUser(guestUser)
   }
 
   return {

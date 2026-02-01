@@ -3,15 +3,20 @@
 // =====================================================
 
 import { supabase } from './supabase';
+import { getCurrentUser, isGuestUser } from './auth';
 import { Goal, CreateGoalData, UpdateGoalData, GoalSummary } from '@/types/goal';
 
 // Criar nova meta
 export async function createGoal(goalData: CreateGoalData): Promise<{ goal: Goal | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { goal: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { goal: null, error: { message: 'Modo visitante: criação desabilitada' } };
     }
 
     const { data: goal, error } = await supabase
@@ -39,10 +44,14 @@ export async function createGoal(goalData: CreateGoalData): Promise<{ goal: Goal
 // Buscar resumo da meta principal
 export async function getGoalSummary(): Promise<{ goalSummary: GoalSummary | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { goalSummary: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { goalSummary: null, error: null };
     }
 
     const { data, error } = await supabase
@@ -68,10 +77,14 @@ export async function getGoalSummary(): Promise<{ goalSummary: GoalSummary | nul
 // Buscar todas as metas do usuário
 export async function getUserGoals(): Promise<{ goals: Goal[] | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { goals: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { goals: [], error: null };
     }
 
     const { data, error } = await supabase
@@ -94,10 +107,14 @@ export async function getUserGoals(): Promise<{ goals: Goal[] | null; error: any
 // Buscar meta por ID
 export async function getGoalById(id: string): Promise<{ goal: Goal | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { goal: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { goal: null, error: null };
     }
 
     const { data: goal, error } = await supabase
@@ -122,10 +139,14 @@ export async function getGoalById(id: string): Promise<{ goal: Goal | null; erro
 // Atualizar meta
 export async function updateGoal(id: string, updates: UpdateGoalData): Promise<{ goal: Goal | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { goal: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { goal: null, error: { message: 'Modo visitante: edição desabilitada' } };
     }
 
     const { data: goal, error } = await supabase
@@ -151,10 +172,14 @@ export async function updateGoal(id: string, updates: UpdateGoalData): Promise<{
 // Deletar meta
 export async function deleteGoal(id: string): Promise<{ success: boolean; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { success: false, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { success: false, error: { message: 'Modo visitante: exclusão desabilitada' } };
     }
 
     const { error } = await supabase
@@ -178,10 +203,14 @@ export async function deleteGoal(id: string): Promise<{ success: boolean; error:
 // Upload de imagem para meta
 export async function uploadGoalImage(file: File): Promise<{ url: string | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { url: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { url: null, error: { message: 'Modo visitante: upload desabilitado' } };
     }
 
     const fileExt = file.name.split('.').pop();
@@ -214,10 +243,14 @@ export async function uploadGoalImage(file: File): Promise<{ url: string | null;
 // Atualizar valor atual da meta
 export async function updateGoalProgress(id: string, newAmount: number): Promise<{ goal: Goal | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { goal: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { goal: null, error: { message: 'Modo visitante: atualização desabilitada' } };
     }
 
     // Buscar meta atual para validar

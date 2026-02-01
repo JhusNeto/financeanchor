@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth';
+import { isGuestUser, useAuth } from '@/lib/auth';
 import { getProfile, updateProfile } from '@/lib/auth';
 import { getPartnerData } from '@/lib/partners';
 import { supabase } from '@/lib/supabase';
@@ -43,6 +43,7 @@ interface PartnerData {
 export default function SettingsPage() {
   const router = useRouter();
   const { user, signOut } = useAuth();
+  const isGuest = isGuestUser(user);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [partnerData, setPartnerData] = useState<PartnerData | null>(null);
   const { preferences, updatePreference } = usePreferences();
@@ -101,6 +102,10 @@ export default function SettingsPage() {
 
   const handleUpdateProfile = async (fullName: string) => {
     try {
+      if (isGuest) {
+        showMessage('error', 'Modo visitante: edição desabilitada');
+        return;
+      }
       setSaving(true);
       await updateProfile(user!.id, { full_name: fullName });
       setProfile(prev => prev ? { ...prev, full_name: fullName } : null);
@@ -113,6 +118,10 @@ export default function SettingsPage() {
   };
 
   const handleChangePassword = async () => {
+    if (isGuest) {
+      showMessage('error', 'Modo visitante: alteração de senha desabilitada');
+      return;
+    }
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       showMessage('error', 'As senhas não coincidem');
       return;
@@ -138,6 +147,10 @@ export default function SettingsPage() {
 
   const handleDeleteAccount = async () => {
     try {
+      if (isGuest) {
+        showMessage('error', 'Modo visitante: exclusão desabilitada');
+        return;
+      }
       setSaving(true);
       const { error } = await supabase.auth.admin.deleteUser(user!.id);
       
@@ -155,6 +168,10 @@ export default function SettingsPage() {
 
   const handleUnlinkPartner = async () => {
     try {
+      if (isGuest) {
+        showMessage('error', 'Modo visitante: ação desabilitada');
+        return;
+      }
       setSaving(true);
       // TODO: Implementar lógica de desvincular parceiro
       showMessage('success', 'Parceiro desvinculado com sucesso!');
@@ -169,6 +186,10 @@ export default function SettingsPage() {
 
   const handleSignOutAllDevices = async () => {
     try {
+      if (isGuest) {
+        showMessage('error', 'Modo visitante: ação desabilitada');
+        return;
+      }
       setSaving(true);
       const { error } = await supabase.auth.signOut({ scope: 'global' });
       
@@ -208,6 +229,11 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {isGuest && (
+        <div className="bg-blue-50 border-b border-blue-100 text-blue-700 text-sm px-4 py-3 text-center">
+          Você está em modo visitante. Algumas ações estão desativadas.
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-4xl mx-auto px-4 py-4">

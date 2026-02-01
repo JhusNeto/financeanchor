@@ -3,15 +3,29 @@
 // =====================================================
 
 import { supabase } from './supabase';
+import { getCurrentUser, isGuestUser } from './auth';
 import { DailyInsight, TodayInsight, UserInsight } from '@/types/insight';
 
 // Obter insight do dia atual (gera automaticamente se não existir)
 export async function getTodayInsight(): Promise<{ insight: TodayInsight | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { insight: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return {
+        insight: {
+          id: 'guest-insight',
+          user_id: user.id,
+          message: 'Explore livremente: seu pulso financeiro começa aqui. 💡',
+          date: new Date().toISOString().split('T')[0],
+          created_at: new Date().toISOString()
+        },
+        error: null
+      };
     }
 
     // Primeiro, verificar se já existe insight para hoje
@@ -117,10 +131,14 @@ export async function getTodayInsight(): Promise<{ insight: TodayInsight | null;
 // Obter insights dos últimos dias
 export async function getUserInsights(days: number = 7): Promise<{ insights: UserInsight[] | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { insights: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { insights: [], error: null };
     }
 
     const { data, error } = await supabase
@@ -144,10 +162,23 @@ export async function getUserInsights(days: number = 7): Promise<{ insights: Use
 // Gerar insight manualmente
 export async function generateInsight(): Promise<{ insight: TodayInsight | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { insight: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return {
+        insight: {
+          id: 'guest-insight-generated',
+          user_id: user.id,
+          message: 'Modo visitante: ideias financeiras sem precisar de login. ✨',
+          date: new Date().toISOString().split('T')[0],
+          created_at: new Date().toISOString()
+        },
+        error: null
+      };
     }
 
     const { data, error } = await supabase
@@ -184,10 +215,14 @@ export async function generateInsight(): Promise<{ insight: TodayInsight | null;
 // Criar insight manualmente
 export async function createInsight(message: string): Promise<{ insight: DailyInsight | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { insight: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { insight: null, error: { message: 'Modo visitante: criação desabilitada' } };
     }
 
     const { data: insight, error } = await supabase
@@ -215,10 +250,14 @@ export async function createInsight(message: string): Promise<{ insight: DailyIn
 // Deletar insight
 export async function deleteInsight(id: string): Promise<{ success: boolean; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { success: false, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { success: false, error: { message: 'Modo visitante: exclusão desabilitada' } };
     }
 
     const { error } = await supabase
@@ -242,10 +281,14 @@ export async function deleteInsight(id: string): Promise<{ success: boolean; err
 // Buscar insight por ID
 export async function getInsightById(id: string): Promise<{ insight: DailyInsight | null; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { insight: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { insight: null, error: null };
     }
 
     const { data: insight, error } = await supabase
@@ -270,10 +313,21 @@ export async function getInsightById(id: string): Promise<{ insight: DailyInsigh
 // Buscar estatísticas de insights
 export async function getInsightStats(): Promise<{ stats: any; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { stats: null, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return {
+        stats: {
+          totalInsights: 0,
+          thisWeekInsights: 0,
+          thisMonthInsights: 0
+        },
+        error: null
+      };
     }
 
     const { data: insights, error } = await supabase
@@ -312,10 +366,14 @@ export async function getInsightStats(): Promise<{ stats: any; error: any }> {
 // Verificar se já existe insight para hoje
 export async function hasTodayInsight(): Promise<{ hasInsight: boolean; error: any }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getCurrentUser();
     
     if (authError || !user) {
       return { hasInsight: false, error: { message: 'Usuário não autenticado' } };
+    }
+
+    if (isGuestUser(user)) {
+      return { hasInsight: false, error: null };
     }
 
     const { data, error } = await supabase
